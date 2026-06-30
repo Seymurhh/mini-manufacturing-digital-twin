@@ -49,7 +49,7 @@ class ManufacturingProcessSimulator:
         self.random = random.Random(seed)
         self.sequence = 0
         self.start_time = datetime.now(timezone.utc).replace(microsecond=0)
-        self.machine_id = "BTC-CNC-01"
+        self.machine_id = "SEAS-CNC-01"
         self.part_id = f"BRACKET-{self.random.randint(1000, 9999)}"
         self.operation = "adaptive_cnc_milling"
         self._last_normal_load = 45.0

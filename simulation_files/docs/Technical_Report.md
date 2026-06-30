@@ -68,7 +68,7 @@ This is intentionally smaller than an industrial digital twin. A production vers
 
 ## Simulated Manufacturing Process
 
-The simulated process is an adaptive CNC milling operation for a bracket-like part on machine `BTC-CNC-01`.
+The simulated process is an adaptive CNC milling operation for a bracket-like part on machine `SEAS-CNC-01`.
 
 The process cycles through four phases:
 
@@ -82,7 +82,7 @@ The process cycles through four phases:
 Each generated event includes the topic:
 
 ```text
-factory/BTC-CNC-01/process
+factory/SEAS-CNC-01/process
 ```
 
 That topic is MQTT-style but the current implementation does not require a broker. This keeps the demo zero-install while preserving the event shape expected in an industrial streaming architecture.
