@@ -13,11 +13,11 @@ The goal is not to claim a production-ready digital twin. The goal is to demonst
 5. Detect deviations.
 6. Recommend action with confidence and human-review gates.
 
-This maps directly to manufacturing R&D work where digital models, sensor data, automation, and decision support need to be connected in a practical way.
+This maps directly to the design → make → monitor loop my ES 51 students run, where digital models, sensor data, automation, and decision support need to be connected in a practical way. It is the monitoring end of that thread; its companion `additive-build-advisor` is the design-to-build front half.
 
 ## Project Objective
 
-The prototype was built to address common gaps in an applied manufacturing-AI profile:
+The prototype was built as a teaching aid for **ES 51, Computer-Aided Machine Design** (Harvard SEAS), to make the following ideas concrete for students who machine their own parts:
 
 - Industrial data stream thinking
 - Digital twin workflow design
@@ -68,7 +68,7 @@ This is intentionally smaller than an industrial digital twin. A production vers
 
 ## Simulated Manufacturing Process
 
-The simulated process is an adaptive CNC milling operation for a bracket-like part on machine `BTC-CNC-01`.
+The simulated process is an adaptive CNC milling operation for a bracket-like part on machine `SEAS-CNC-01`.
 
 The process cycles through four phases:
 
@@ -82,7 +82,7 @@ The process cycles through four phases:
 Each generated event includes the topic:
 
 ```text
-factory/BTC-CNC-01/process
+factory/SEAS-CNC-01/process
 ```
 
 That topic is MQTT-style but the current implementation does not require a broker. This keeps the demo zero-install while preserving the event shape expected in an industrial streaming architecture.
@@ -369,12 +369,6 @@ Suggested topics:
 digital-twin, manufacturing, anomaly-detection, cnc, industrial-ai, process-monitoring, decision-support
 ```
 
-## Interview Explanation
+## Teaching note
 
-Use this concise version:
-
-"I built a mini manufacturing digital twin to close my gap around industrial data and digital-twin workflows. The system streams simulated CNC telemetry, compares actual values against an expected process model, detects anomalies like chatter, tool wear, thermal drift, feed mismatch, and sensor dropout, and converts those detections into operator-facing recommendations. I intentionally kept the detector transparent and human-reviewable because in manufacturing, an AI recommendation should be grounded in physical evidence and should not automatically act when telemetry or constraints are unreliable."
-
-## Strong Follow-Up Line
-
-"The most important design choice was not the dashboard. It was the gating logic. A model can detect or recommend, but physical action should depend on signal quality, process constraints, and confidence. That is the same verify-before-act pattern I used in my robotic manipulation work."
+The point I want ES 51 students to take away is not the dashboard — it is the gating logic. The system streams simulated CNC telemetry, compares actual values against an expected process model, detects anomalies (chatter, tool wear, thermal drift, feed mismatch, sensor dropout), and converts those detections into operator-facing recommendations. The detector is deliberately transparent and human-reviewable: a model can detect or recommend, but physical action should depend on signal quality, process constraints, and confidence — it should not automatically act when telemetry or constraints are unreliable. That verify-before-act discipline is the same one the companion `additive-build-advisor` uses at its release gate, and the same pattern that shows up in robotic-manipulation work.

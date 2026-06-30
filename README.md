@@ -2,7 +2,9 @@
 
 A zero-install Python demo for manufacturing process monitoring, anomaly detection, and operator decision support.
 
-This project was built as an Autodesk Research interview artifact. It shows how a physical manufacturing process can be represented as a live data stream, compared against an expected process model, checked for anomalies, and translated into auditable recommendations.
+I built this for **ES 51, Computer-Aided Machine Design**, the course I teach at Harvard SEAS, where students machine their own parts on the lathe and mill. It is the **monitoring** end of the design → make → monitor thread: it shows how a physical cut can be represented as a live data stream, compared against an expected process model, checked for anomalies, and translated into auditable recommendations — so students can see the machining as data, not just chips.
+
+It is the **back half** of a digital thread. Its companion, [`additive-build-advisor`](https://github.com/Seymurhh/additive-build-advisor), is the front half: it takes a part from CAD through build-prep and flags the features FFF cannot hold as-built. When students take that part to the CNC to finish those features, this twin watches the cut.
 
 For the full technical write-up with simulation examples, see [REPORT.md](REPORT.md).
 For a PDF version, see [Mini Manufacturing Digital Twin Technical Report](output/pdf/Mini_Manufacturing_Digital_Twin_Technical_Report.pdf).
@@ -10,16 +12,16 @@ For a PDF version, see [Mini Manufacturing Digital Twin Technical Report](output
 ## What It Shows
 
 - CNC-style machine telemetry
-- MQTT-style topic envelope: `factory/BTC-CNC-01/process`
+- MQTT-style topic envelope: `factory/SEAS-CNC-01/process`
 - Expected vs actual process behavior
 - Lightweight digital twin state
 - Anomaly detection for chatter, tool wear, thermal drift, feed mismatch, and sensor dropout
 - Human-in-the-loop recommendation logic
 - Browser dashboard with live charts and CSV export
 
-## Why This Fits Autodesk Research
+## The workflow it teaches
 
-The role emphasizes hands-on experimentation across manufacturing, sensing, automation, real-world data, AI-assisted workflows, and digital-thread thinking. This demo is intentionally small, but it reflects that workflow:
+The point, for ES 51, is the loop a good operator runs in their head — made explicit:
 
 1. Start with the physical process.
 2. Stream machine data.
@@ -124,9 +126,9 @@ The simulator creates repeatable anomaly windows:
 - Feed mismatch: feed rate exits the validated process window
 - Sensor dropout: missing telemetry blocks automated recommendations
 
-## Interview Explanation
+## Where it fits the digital thread
 
-"I built this because the Autodesk role emphasizes industrial data, digital twins, anomaly detection, and practical AI for manufacturing. The prototype streams simulated CNC data, compares expected and actual process behavior, detects anomalies like chatter and thermal drift, and produces operator-facing recommendations. It is deliberately lightweight, but it shows the workflow I would bring to Autodesk Research: understand the physical process, measure it, compare it to a model, detect deviations, and gate action with confidence and human review."
+The `additive-build-advisor` releases a part with an explicit hand-off block — machine id, part id, expected operation, and the signals to watch. That becomes this twin's as-built monitoring context: design intent flowing all the way through to the as-machined part. Front half decides *how to make it*; back half watches it *being made*. Same verify-before-act discipline at both ends — a model may recommend, but a physical action is gated on the evidence and on a human-review path when anything is uncertain.
 
 ## Honest Scope
 
