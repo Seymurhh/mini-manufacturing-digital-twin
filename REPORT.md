@@ -13,11 +13,11 @@ The goal is not to claim a production-ready digital twin. The goal is to demonst
 5. Detect deviations.
 6. Recommend action with confidence and human-review gates.
 
-This maps directly to the design → make → monitor loop my ES 51 students run, where digital models, sensor data, automation, and decision support need to be connected in a practical way. It is the monitoring end of that thread; its companion `additive-build-advisor` is the design-to-build front half.
+This maps directly to real manufacturing monitoring, where digital models, sensor data, automation, and decision support need to be connected in a practical way.
 
 ## Project Objective
 
-The prototype was built as a teaching aid for **ES 51, Computer-Aided Machine Design** (Harvard SEAS), to make the following ideas concrete for students who machine their own parts:
+The prototype was built as a teaching project, to make the following ideas concrete:
 
 - Industrial data stream thinking
 - Digital twin workflow design
@@ -371,4 +371,4 @@ digital-twin, manufacturing, anomaly-detection, cnc, industrial-ai, process-moni
 
 ## Teaching note
 
-The point I want ES 51 students to take away is not the dashboard — it is the gating logic. The system streams simulated CNC telemetry, compares actual values against an expected process model, detects anomalies (chatter, tool wear, thermal drift, feed mismatch, sensor dropout), and converts those detections into operator-facing recommendations. The detector is deliberately transparent and human-reviewable: a model can detect or recommend, but physical action should depend on signal quality, process constraints, and confidence — it should not automatically act when telemetry or constraints are unreliable. That verify-before-act discipline is the same one the companion `additive-build-advisor` uses at its release gate, and the same pattern that shows up in robotic-manipulation work.
+The point to take away is not the dashboard — it is the gating logic. The system streams simulated CNC telemetry, compares actual values against an expected process model, detects anomalies (chatter, tool wear, thermal drift, feed mismatch, sensor dropout), and converts those detections into operator-facing recommendations. The detector is deliberately transparent and human-reviewable: a model can detect or recommend, but physical action should depend on signal quality, process constraints, and confidence — it should not automatically act when telemetry or constraints are unreliable. That verify-before-act discipline is the whole point of the project.
