@@ -17,7 +17,20 @@ For a PDF version, see [Mini Manufacturing Digital Twin Technical Report](output
 - Lightweight digital twin state
 - Anomaly detection for chatter, tool wear, thermal drift, feed mismatch, and sensor dropout
 - Human-in-the-loop recommendation logic
-- Browser dashboard with live charts and CSV export
+- Interactive browser platform: animated factory data-flow, protocol and packet inspector, CNC sensor guide, a bracket-milling case study, live charts, and CSV export
+
+## Walking through the platform
+
+Running the app opens an interactive engineering platform, not just a chart page. It walks top to bottom through the digital-twin loop:
+
+- A live overview pairing the physical CNC process with its digital replica.
+- An animated **factory data-flow** map (machine to edge gateway to protocol broker to twin model to operator dashboard) with clickable nodes.
+- A **packet inspector** with an MQTT / OPC UA / MTConnect / REST protocol selector, so the telemetry envelope is tangible.
+- A **CNC sensor guide** that ties each signal (spindle load, vibration, temperature, feed, tool wear) to the detector rule that uses it.
+- A **bracket-milling case study** with the machining cell shown alongside the live simulated state.
+- The core Load / Thermal / Vibration charts, decision-support panel, anomaly evidence, and latest-event view.
+
+See [V2_PLATFORM_PLAN.md](V2_PLATFORM_PLAN.md) for the platform architecture and phased build plan.
 
 ## The workflow it teaches
 
@@ -52,6 +65,9 @@ mini-manufacturing-digital-twin/
   recommender.py
   requirements.txt
   README.md
+  V2_PLATFORM_PLAN.md
+  assets/
+    cnc-digital-twin-cell.png
   data/
     sample_run.csv
   static/

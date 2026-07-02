@@ -1,2 +1,0 @@
-# No external packages are required.
-# Python 3.10+ is enough to run the local dashboard.

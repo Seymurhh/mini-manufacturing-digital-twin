@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mini Manufacturing Digital Twin</title>
+    <title>Manufacturing Digital Twin Platform v2</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Manufacturing process monitor</p>
-        <h1>Mini Digital Twin</h1>
+      <div class="brand">
+        <p class="eyebrow">CNC machining digital twin lab</p>
+        <h1>Manufacturing Digital Twin Platform</h1>
       </div>
-      <div class="controls" aria-label="Dashboard controls">
+      <div class="controls" aria-label="Simulation controls">
         <button id="toggleButton" type="button">Pause</button>
         <button id="stepButton" type="button">Step</button>
         <button id="resetButton" type="button">Reset</button>
@@ -20,7 +20,80 @@
       </div>
     </header>
 
+    <nav class="learning-path" aria-label="Digital twin learning path">
+      <button class="active" type="button" data-scroll-target="overview">
+        <span>01</span>
+        <strong>Observe</strong>
+      </button>
+      <button type="button" data-scroll-target="data-path">
+        <span>02</span>
+        <strong>Connect</strong>
+      </button>
+      <button type="button" data-scroll-target="signals">
+        <span>03</span>
+        <strong>Measure</strong>
+      </button>
+      <button type="button" data-scroll-target="real-data">
+        <span>04</span>
+        <strong>Collect</strong>
+      </button>
+      <button type="button" data-scroll-target="case-study">
+        <span>05</span>
+        <strong>Compare</strong>
+      </button>
+      <button type="button" data-scroll-target="decisions">
+        <span>06</span>
+        <strong>Decide</strong>
+      </button>
+      <p id="pathCaption" class="path-caption">Stage 01: observe the live physical process and its digital state.</p>
+    </nav>
+
     <main class="layout">
+      <section id="overview" class="hero-platform section-anchor" data-section="overview" aria-label="Physical CNC process and digital replica">
+        <div class="hero-media">
+          <img
+            src="/assets/cnc-digital-twin-cell.png"
+            alt="CNC machining cell with a digital twin workstation"
+          >
+          <div class="asset-badge physical">Physical CNC cell</div>
+          <div class="asset-badge digital">Digital replica</div>
+          <div class="signal-trace" aria-hidden="true"></div>
+        </div>
+
+        <aside class="twin-summary" aria-label="Live digital twin summary">
+          <div class="summary-heading">
+            <p class="eyebrow">Live twin state</p>
+            <span id="activeProtocol">MQTT</span>
+          </div>
+          <h2 id="twinState">Waiting for machine telemetry</h2>
+          <p id="physicalState">Physical process stream has not started.</p>
+          <div class="replica-meters" aria-label="Current signal levels">
+            <div>
+              <span>Load</span>
+              <meter id="machineLoadBar" min="0" max="100" value="0"></meter>
+            </div>
+            <div>
+              <span>Thermal</span>
+              <meter id="machineTempBar" min="20" max="70" value="20"></meter>
+            </div>
+            <div>
+              <span>Vibration</span>
+              <meter id="machineVibrationBar" min="0" max="1.8" value="0"></meter>
+            </div>
+          </div>
+          <dl class="mini-list">
+            <div>
+              <dt>Expected model gap</dt>
+              <dd id="modelGap">No sample yet.</dd>
+            </div>
+            <div>
+              <dt>Digital state</dt>
+              <dd id="digitalState">Twin state will update every telemetry packet.</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
+
       <section class="status-grid" aria-label="Current process status">
         <article class="metric">
           <span>Machine</span>
@@ -48,34 +121,353 @@
         </article>
       </section>
 
-      <section class="main-grid">
-        <article class="panel chart-panel">
+      <section class="platform-grid">
+        <div id="data-path" class="section-intro wide section-anchor" data-section="data-path">
+          <span>02</span>
+          <div>
+            <p class="eyebrow">Connect the factory floor</p>
+            <h2>Follow one telemetry packet from machine to model.</h2>
+          </div>
+        </div>
+
+        <section class="panel flow-panel" aria-labelledby="flowTitle">
           <div class="panel-heading">
-            <h2>Load Model</h2>
+            <div>
+              <p class="eyebrow">Factory data path</p>
+              <h2 id="flowTitle">From physical process to digital twin</h2>
+            </div>
+            <span id="topic">factory/SEAS-CNC-01/process</span>
+          </div>
+
+          <div class="factory-flow" aria-label="Interactive factory data flow">
+            <button class="flow-node machine active" type="button" data-node="machine">
+              <span>CNC machine</span>
+              <strong>Physical cut</strong>
+            </button>
+            <button class="flow-node sensors" type="button" data-node="sensors">
+              <span>Sensors</span>
+              <strong>Signals</strong>
+            </button>
+            <button class="flow-node edge" type="button" data-node="edge">
+              <span>Edge gateway</span>
+              <strong>Normalize</strong>
+            </button>
+            <button class="flow-node protocol" type="button" data-node="protocol">
+              <span>Protocol</span>
+              <strong>Publish</strong>
+            </button>
+            <button class="flow-node model" type="button" data-node="model">
+              <span>Twin model</span>
+              <strong>Compare</strong>
+            </button>
+            <button class="flow-node operator" type="button" data-node="operator">
+              <span>Operator</span>
+              <strong>Decide</strong>
+            </button>
+            <div class="flow-line line-a" aria-hidden="true"></div>
+            <div class="flow-line line-b" aria-hidden="true"></div>
+            <div class="flow-line line-c" aria-hidden="true"></div>
+            <div class="flow-line line-d" aria-hidden="true"></div>
+            <div class="flow-line line-e" aria-hidden="true"></div>
+          </div>
+
+          <div class="flow-detail" aria-live="polite">
+            <div>
+              <h3 id="nodeTitle">CNC machine</h3>
+              <p id="nodeDescription">The physical milling process creates the state that the digital twin must represent.</p>
+            </div>
+            <dl class="mini-list">
+              <div>
+                <dt>Typical latency</dt>
+                <dd id="nodeLatency">2-250 ms depending on signal and network path.</dd>
+              </div>
+              <div>
+                <dt>Common risk</dt>
+                <dd id="nodeFailure">Controller overrides or missing context can make good data misleading.</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <aside class="panel lesson-panel" aria-labelledby="lessonTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Guided concepts</p>
+              <h2 id="lessonTitle">What is a digital twin?</h2>
+            </div>
+            <span id="lessonStep">Step 1 of 3</span>
+          </div>
+          <div class="segmented" role="tablist" aria-label="Learning modules">
+            <button class="active" type="button" data-lesson="twin">Twin</button>
+            <button type="button" data-lesson="flow">Data flow</button>
+            <button type="button" data-lesson="case">CNC case</button>
+          </div>
+          <p id="lessonBody" class="lesson-body">
+            A useful digital twin is a live representation of a physical asset, updated by operational data and compared with an expected model.
+          </p>
+          <ul id="lessonPoints" class="compact-list">
+            <li>Physical process and digital state stay linked.</li>
+            <li>Models explain what should be happening.</li>
+            <li>Humans still review high-impact decisions.</li>
+          </ul>
+        </aside>
+
+        <div id="signals" class="section-intro wide section-anchor" data-section="signals">
+          <span>03</span>
+          <div>
+            <p class="eyebrow">Measure the process</p>
+            <h2>Inspect the data envelope and the sensor signals that make the twin trustworthy.</h2>
+          </div>
+        </div>
+
+        <section class="panel protocol-panel" aria-labelledby="packetTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Protocol lab</p>
+              <h2 id="packetTitle">Live packet inspector</h2>
+            </div>
+            <span id="packetQuality">quality pending</span>
+          </div>
+          <div class="segmented protocol-selector" role="tablist" aria-label="Protocol selector">
+            <button class="active" type="button" data-protocol="mqtt">MQTT</button>
+            <button type="button" data-protocol="opcua">OPC UA</button>
+            <button type="button" data-protocol="mtconnect">MTConnect</button>
+            <button type="button" data-protocol="rest">REST</button>
+          </div>
+          <div class="protocol-explainer" aria-live="polite">
+            <div>
+              <span id="protocolRoleLabel">Telemetry streaming</span>
+              <h3 id="protocolName">MQTT publish/subscribe</h3>
+              <p id="protocolPurpose">MQTT moves lightweight machine events from an edge gateway to subscribers such as the digital twin, dashboard, and storage services.</p>
+            </div>
+            <dl class="mini-list">
+              <div>
+                <dt>Function</dt>
+                <dd id="protocolFunction">Publish each CNC event to a topic so multiple systems can consume the same telemetry stream.</dd>
+              </div>
+              <div>
+                <dt>In this platform</dt>
+                <dd id="protocolTwinUse">The topic names the asset and the payload carries timestamped process signals, quality, model expectations, and detection state.</dd>
+              </div>
+            </dl>
+          </div>
+          <pre id="packetPayload" class="packet-view">Waiting for telemetry packet...</pre>
+        </section>
+
+        <section class="panel sensor-panel" aria-labelledby="sensorTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Sensor layer</p>
+              <h2 id="sensorTitle">CNC signals used by the twin</h2>
+            </div>
+            <span id="sensorValue">No value</span>
+          </div>
+          <div id="sensorButtons" class="sensor-grid" aria-label="Sensor selector"></div>
+          <dl class="mini-list sensor-detail">
+            <div>
+              <dt>Expected range</dt>
+              <dd id="sensorRange">Select a signal.</dd>
+            </div>
+            <div>
+              <dt>Used for</dt>
+              <dd id="sensorUse">Signal explanation appears here.</dd>
+            </div>
+            <div>
+              <dt>Failure mode</dt>
+              <dd id="sensorFailure">Missing or stale data reduces twin trust.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <div id="real-data" class="section-intro wide section-anchor" data-section="real-data">
+          <span>04</span>
+          <div>
+            <p class="eyebrow">Replace simulation with reality</p>
+            <h2>Separate what the simulator teaches from how a plant would collect real data.</h2>
+          </div>
+        </div>
+
+        <section class="panel acquisition-panel" aria-labelledby="sourceTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Data source option</p>
+              <h2 id="sourceTitle">Synthetic stream or real machine telemetry</h2>
+            </div>
+            <span id="sourceBadge">Simulation active</span>
+          </div>
+          <div class="segmented source-selector" role="tablist" aria-label="Data source selector">
+            <button class="active" type="button" data-source="synthetic">Synthetic</button>
+            <button type="button" data-source="real">Real machine</button>
+          </div>
+          <p id="sourceBody" class="lesson-body">
+            The current demo uses deterministic synthetic CNC events so the full twin workflow is repeatable, explainable, and easy to validate.
+          </p>
+          <ul id="sourcePoints" class="compact-list">
+            <li>Simulator creates warmup, roughing, finishing, and inspection phases.</li>
+            <li>Known anomaly windows make chatter, tool wear, drift, feed mismatch, and dropout explainable.</li>
+            <li>The same event schema can receive real machine data later.</li>
+          </ul>
+        </section>
+
+        <section class="panel collection-panel wide" aria-labelledby="collectionTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Real collection stack</p>
+              <h2 id="collectionTitle">How real CNC data would enter the twin</h2>
+            </div>
+            <span id="collectionStage">Controller first</span>
+          </div>
+          <div class="collection-flow" aria-label="Real machine data collection path">
+            <button class="collection-node active" type="button" data-collection="controller">
+              <span>1</span>
+              <strong>Controller</strong>
+            </button>
+            <button class="collection-node" type="button" data-collection="sensors">
+              <span>2</span>
+              <strong>Added sensors</strong>
+            </button>
+            <button class="collection-node" type="button" data-collection="edge">
+              <span>3</span>
+              <strong>Edge gateway</strong>
+            </button>
+            <button class="collection-node" type="button" data-collection="platform">
+              <span>4</span>
+              <strong>Twin platform</strong>
+            </button>
+            <button class="collection-node" type="button" data-collection="validation">
+              <span>5</span>
+              <strong>Validation</strong>
+            </button>
+          </div>
+          <div class="collection-detail">
+            <div>
+              <h3 id="collectionTitleDetail">Controller data first</h3>
+              <p id="collectionBody">
+                Start with the CNC controller because it already knows program, feed, speed, alarms, overrides, tool number, axis position, and spindle load.
+              </p>
+            </div>
+            <dl class="mini-list">
+              <div>
+                <dt>Signals</dt>
+                <dd id="collectionSignals">Program, operation, feed, speed, load, tool, alarms, axis position.</dd>
+              </div>
+              <div>
+                <dt>Interface</dt>
+                <dd id="collectionInterface">MTConnect adapter, OPC UA server, controller API, or vendor gateway.</dd>
+              </div>
+              <div>
+                <dt>Engineering note</dt>
+                <dd id="collectionNote">Controller data is necessary, but it may not directly measure chatter, thermal drift, or fixturing problems.</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <div id="case-study" class="section-intro wide section-anchor" data-section="case-study">
+          <span>05</span>
+          <div>
+            <p class="eyebrow">Run the CNC case study</p>
+            <h2>Compare the real process state with the expected process model.</h2>
+          </div>
+        </div>
+
+        <section class="panel case-panel" aria-labelledby="caseTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">CNC machining case study</p>
+              <h2 id="caseTitle">Bracket milling cycle</h2>
+            </div>
+            <span id="cyclePosition">Warmup -> Roughing -> Finishing -> Inspection</span>
+          </div>
+          <div id="phaseTimeline" class="phase-timeline" aria-label="Machining cycle phases">
+            <span data-phase="warmup">Warmup</span>
+            <span data-phase="roughing">Roughing</span>
+            <span data-phase="finishing">Finishing</span>
+            <span data-phase="inspection">Inspection</span>
+          </div>
+          <div id="anomalyTags" class="tag-row" aria-label="Active anomaly tags">
+            <span>Nominal process</span>
+          </div>
+          <p class="case-copy">
+            The same CNC cycle runs as a physical process and as a live digital replica. The twin compares load, thermal behavior, vibration, feed, and tool-wear evidence before recommending action.
+          </p>
+        </section>
+
+        <section class="panel machining-panel wide" aria-labelledby="machiningTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Physical process simulation</p>
+              <h2 id="machiningTitle">Part being cut in the CNC cell</h2>
+            </div>
+            <span id="cutPhaseLabel">Waiting for cycle</span>
+          </div>
+          <div class="machining-layout">
+            <canvas
+              id="machiningCanvas"
+              class="machining-canvas"
+              width="1100"
+              height="380"
+              aria-label="Animated top-down CNC machining simulation"
+            ></canvas>
+            <dl class="machining-readout">
+              <div>
+                <dt>Cut progress</dt>
+                <dd id="cutProgress">0%</dd>
+              </div>
+              <div>
+                <dt>Tool position</dt>
+                <dd id="toolPosition">X 0.0 / Y 0.0</dd>
+              </div>
+              <div>
+                <dt>Material removal</dt>
+                <dd id="materialRemoval">No active cut.</dd>
+              </div>
+              <div>
+                <dt>Chip/load state</dt>
+                <dd id="chipLoadState">Waiting for telemetry.</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="panel chart-panel wide">
+          <div class="panel-heading">
+            <h2>Load model</h2>
             <span>actual vs expected</span>
           </div>
           <canvas id="loadChart" width="900" height="300"></canvas>
-        </article>
+        </section>
 
-        <article class="panel chart-panel">
+        <section class="panel chart-panel">
           <div class="panel-heading">
-            <h2>Thermal Model</h2>
+            <h2>Thermal model</h2>
             <span>actual vs expected</span>
           </div>
           <canvas id="temperatureChart" width="900" height="300"></canvas>
-        </article>
+        </section>
 
-        <article class="panel chart-panel">
+        <section class="panel chart-panel">
           <div class="panel-heading">
             <h2>Vibration</h2>
             <span>chatter signal</span>
           </div>
           <canvas id="vibrationChart" width="900" height="300"></canvas>
-        </article>
+        </section>
 
-        <article class="panel recommendation-panel">
+        <div id="decisions" class="section-intro wide section-anchor" data-section="decisions">
+          <span>06</span>
+          <div>
+            <p class="eyebrow">Turn evidence into action</p>
+            <h2>Use severity, confidence, and required checks before changing the process.</h2>
+          </div>
+        </div>
+
+        <section class="panel recommendation-panel" aria-labelledby="decisionTitle">
           <div class="panel-heading">
-            <h2>Decision Support</h2>
+            <div>
+              <p class="eyebrow">Decision support</p>
+              <h2 id="decisionTitle">Human-in-the-loop action</h2>
+            </div>
             <span id="confidence">confidence 0.00</span>
           </div>
           <div class="decision" id="decision">Proceed</div>
@@ -90,22 +482,22 @@
               <dd id="rationale">Signals are inside expected process limits.</dd>
             </div>
           </dl>
-        </article>
+        </section>
 
-        <article class="panel">
+        <section class="panel evidence-panel">
           <div class="panel-heading">
-            <h2>Anomaly Evidence</h2>
+            <h2>Anomaly evidence</h2>
             <span id="anomalyCount">0 active</span>
           </div>
           <ul id="evidenceList" class="evidence-list">
             <li>Waiting for process data.</li>
           </ul>
-        </article>
+        </section>
 
-        <article class="panel">
+        <section class="panel event-panel">
           <div class="panel-heading">
-            <h2>Latest Event</h2>
-            <span id="topic">factory/SEAS-CNC-01/process</span>
+            <h2>Latest event</h2>
+            <span>engineering values</span>
           </div>
           <div class="event-grid">
             <span>RPM</span><strong id="rpm">0</strong>
@@ -115,7 +507,7 @@
             <span>Vibration</span><strong id="vibration">0.00</strong>
             <span>Tool wear</span><strong id="wear">0%</strong>
           </div>
-        </article>
+        </section>
       </section>
     </main>
 

@@ -19,6 +19,7 @@ from simulator import ManufacturingProcessSimulator, write_sample_csv
 ROOT = Path(__file__).resolve().parent
 STATIC_DIR = ROOT / "static"
 DATA_DIR = ROOT / "data"
+ASSETS_DIR = ROOT / "assets"
 MAX_HISTORY = 180
 
 simulator = ManufacturingProcessSimulator(seed=7)
@@ -92,6 +93,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif path.startswith("/static/"):
             requested = STATIC_DIR / path.removeprefix("/static/")
             self._serve_file(requested)
+        elif path.startswith("/assets/"):
+            requested = ASSETS_DIR / path.removeprefix("/assets/")
+            self._serve_file(requested)
         elif path == "/api/next":
             params = parse_qs(parsed.query)
             count = int(params.get("count", ["1"])[0])
@@ -160,7 +164,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _serve_file(self, path: Path) -> None:
         resolved = path.resolve()
-        allowed_roots = (STATIC_DIR.resolve(), DATA_DIR.resolve())
+        allowed_roots = (STATIC_DIR.resolve(), DATA_DIR.resolve(), ASSETS_DIR.resolve())
         if not any(str(resolved).startswith(str(root)) for root in allowed_roots):
             self.send_error(HTTPStatus.FORBIDDEN, "Forbidden")
             return
