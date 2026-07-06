@@ -17,6 +17,10 @@ PHASES = (
     ("inspection", 24),
 )
 
+# Product Lifecycle Management: the released dimensional tolerance for the part feature
+# the CMM inspects. Deviations above this drive the QMS non-conformance flow.
+PART_TOLERANCE_UM = 25.0
+
 
 @dataclass(frozen=True)
 class ProcessEvent:
@@ -36,6 +40,17 @@ class ProcessEvent:
     expected_load_pct: float
     expected_temperature_c: float
     anomaly_label: str
+    # Digital-thread enterprise context: the systems of record that surround the machine.
+    work_order: str  # MES production order dispatched to the cell
+    part_revision: str  # PLM released revision the work order is built to
+    tolerance_um: float  # PLM released dimensional tolerance for the inspected feature
+    eco_id: str | None  # PLM engineering change order, once a correction is released
+    ncr_id: str | None  # QMS non-conformance report, when a part is out of tolerance
+    disposition: str | None  # QMS disposition for the non-conformance (rework/scrap/use-as-is)
+    cmm_deviation_um: float  # measured deviation from the CMM, fed to the QMS/SPC record
+    cmm_verdict: str  # in_tol | out_of_tol
+    mes_state: str  # in_process | hold | planning
+    oee_pct: float  # machine-data rollup: overall equipment effectiveness
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -53,6 +68,7 @@ class ManufacturingProcessSimulator:
         self.part_id = f"BRACKET-{self.random.randint(1000, 9999)}"
         self.operation = "adaptive_cnc_milling"
         self._last_normal_load = 45.0
+        self._oee = 84.0
 
     def reset(self) -> None:
         self.random = random.Random(self.seed)
@@ -60,6 +76,7 @@ class ManufacturingProcessSimulator:
         self.start_time = datetime.now(timezone.utc).replace(microsecond=0)
         self.part_id = f"BRACKET-{self.random.randint(1000, 9999)}"
         self._last_normal_load = 45.0
+        self._oee = 84.0
 
     def next_event(self) -> ProcessEvent:
         phase = self._phase_for_sequence(self.sequence)
@@ -94,6 +111,8 @@ class ManufacturingProcessSimulator:
         if load is not None:
             self._last_normal_load = load
 
+        thread = self._thread_snapshot(self.sequence)
+
         event_time = self.start_time + timedelta(seconds=self.sequence * 2)
         event = ProcessEvent(
             timestamp=event_time.isoformat(),
@@ -112,9 +131,86 @@ class ManufacturingProcessSimulator:
             expected_load_pct=round(expected_load, 2),
             expected_temperature_c=round(expected_temp, 2),
             anomaly_label=label,
+            work_order=thread["work_order"],
+            part_revision=thread["part_revision"],
+            tolerance_um=thread["tolerance_um"],
+            eco_id=thread["eco_id"],
+            ncr_id=thread["ncr_id"],
+            disposition=thread["disposition"],
+            cmm_deviation_um=thread["cmm_deviation_um"],
+            cmm_verdict=thread["cmm_verdict"],
+            mes_state=thread["mes_state"],
+            oee_pct=thread["oee_pct"],
         )
         self.sequence += 1
         return event
+
+    def _thread_snapshot(self, sequence: int) -> dict:
+        """Evolve the enterprise systems of record (PLM / MES / QMS / machine data)
+        around a repeatable closed-loop event.
+
+        The first part (cycle 0) hits the scripted thermal-drift window during
+        finishing, so its finished surface runs hot. When it reaches the CMM in the
+        inspection phase it measures out of tolerance, the QMS raises a non-conformance,
+        PLM releases an engineering change, and MES re-dispatches the corrected
+        revision. Subsequent parts run clean. This mirrors design -> make -> inspect ->
+        correct -> re-release, which is the loop the digital thread is meant to close.
+        """
+        rand = self.random
+
+        rev = "A"
+        work_order = "WO-1041"
+        mes_state = "in_process"
+        ncr_id: str | None = None
+        disposition: str | None = None
+        eco_id: str | None = None
+        verdict = "in_tol"
+        deviation = round(8.0 + abs(rand.gauss(0, 1.4)), 1)
+        oee_target = 84.0
+
+        if 156 <= sequence <= 179:
+            # Part #1 inspected after the finishing thermal drift: out of tolerance.
+            mes_state = "hold"
+            ncr_id = "NCR-207"
+            disposition = "rework"
+            verdict = "out_of_tol"
+            deviation = round(31.0 + abs(rand.gauss(0, 1.8)), 1)
+            eco_id = "ECO-118" if sequence >= 170 else None  # change opened during QMS review
+            oee_target = 63.0
+        elif 180 <= sequence <= 189:
+            # Engineering change in work: PLM revises the part, MES holds the next release.
+            mes_state = "planning"
+            ncr_id = "NCR-207"
+            disposition = "rework"
+            verdict = "out_of_tol"
+            deviation = round(31.0 + abs(rand.gauss(0, 1.2)), 1)
+            eco_id = "ECO-118"
+            oee_target = 68.0
+        elif sequence >= 190:
+            # Corrected process: rev B released, MES re-dispatches on a new work order.
+            rev = "B"
+            work_order = "WO-1042"
+            eco_id = "ECO-118"
+            mes_state = "in_process"
+            verdict = "in_tol"
+            deviation = round(9.0 + abs(rand.gauss(0, 1.1)), 1)
+            oee_target = 86.0
+
+        # Smooth OEE toward its target so the machine-data rollup reads like a live KPI.
+        self._oee += (oee_target - self._oee) * 0.25
+
+        return {
+            "work_order": work_order,
+            "part_revision": rev,
+            "tolerance_um": PART_TOLERANCE_UM,
+            "eco_id": eco_id,
+            "ncr_id": ncr_id,
+            "disposition": disposition,
+            "cmm_deviation_um": deviation,
+            "cmm_verdict": verdict,
+            "mes_state": mes_state,
+            "oee_pct": round(self._oee, 1),
+        }
 
     def generate(self, count: int) -> Iterable[ProcessEvent]:
         for _ in range(count):

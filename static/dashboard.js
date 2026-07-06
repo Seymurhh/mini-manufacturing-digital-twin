@@ -40,6 +40,30 @@ const SECTION_CAPTIONS = {
 };
 
 const NODE_DETAILS = {
+  plm: {
+    title: "PLM · product record",
+    description: "Product Lifecycle Management is the system of record for the as-designed product: part number, revision, BOM, released tolerances, and engineering change orders (ECO). It is where design intent legitimately originates.",
+    interface: "Releases the item, revision, and GD&T to CAD and the routing/BOM to MES; receives change requests from QMS.",
+    watch: "If a quality non-conformance never turns into a controlled change here, the same defect is built again.",
+  },
+  mes: {
+    title: "MES · execution",
+    description: "The Manufacturing Execution System turns a released part and process into a dispatched work order, tracks WIP and routing on the floor, and records the as-built genealogy of every unit.",
+    interface: "Dispatches the work order to the CNC cell; consumes as-built state and OEE from the twin and machine-data historian.",
+    watch: "A work order dispatched against a superseded revision quietly builds parts to the wrong spec.",
+  },
+  qms: {
+    title: "QMS · quality",
+    description: "The Quality Management System consumes CMM results into SPC control charts, raises non-conformance reports (NCR), assigns dispositions, and drives corrective action (CAPA) back to PLM.",
+    interface: "Reads inspection deviations from the CMM; opens an NCR and feeds the corrective change back to PLM.",
+    watch: "An out-of-tolerance part with no disposition and no linked change is scrap waiting to repeat.",
+  },
+  hub: {
+    title: "Machine data · historian",
+    description: "The machine-data layer archives the as-run time series and rolls it up into OEE, utilization, and tool-life analytics — the operational reality that MES scheduling and engineering decisions lean on.",
+    interface: "Ingests the same telemetry the twin sees; publishes OEE and utilization to MES and engineering.",
+    watch: "Averaged KPIs can hide the short excursions — like a thermal drift — that actually cause defects.",
+  },
   cad: {
     title: "CAD · product design",
     description: "The origin of the digital thread: part geometry, tolerances, datums, and material intent are defined here.",
@@ -404,21 +428,17 @@ function severityClass(severity) {
   return "normal";
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-  return response.json();
-}
-
+// The twin runs entirely in the browser via twin-engine.js (the client-side port of the
+// Python simulator/detector/recommender), so the same UI works with no backend on static
+// hosting. window.TwinEngine returns the identical { latest, history, summary } payload the
+// Python /api endpoints did.
 async function tick(count = 1) {
-  const payload = await fetchJson(`/api/next?count=${count}`);
+  const payload = window.TwinEngine.next(count);
   render(payload);
 }
 
 async function reset() {
-  const payload = await fetchJson("/api/reset");
+  const payload = window.TwinEngine.reset();
   render(payload);
 }
 
@@ -617,6 +637,21 @@ function buildProtocolPacket(event, detection) {
     operation: event.operation,
     phase: event.process_phase,
   };
+  // Enterprise context that ties telemetry to the systems of record (PLM/MES/QMS).
+  const thread = {
+    work_order: event.work_order,
+    part_revision: event.part_revision,
+    tolerance_um: event.tolerance_um,
+    mes_state: event.mes_state,
+    quality: {
+      verdict: event.cmm_verdict,
+      deviation_um: event.cmm_deviation_um,
+      ncr_id: event.ncr_id,
+      disposition: event.disposition,
+      eco_id: event.eco_id,
+    },
+    oee_pct: event.oee_pct,
+  };
 
   if (state.protocol === "opcua") {
     return JSON.stringify({
@@ -675,6 +710,7 @@ function buildProtocolPacket(event, detection) {
           expected_load_pct: event.expected_load_pct,
           expected_temperature_c: event.expected_temperature_c,
         },
+        thread,
         detection,
       },
     }, null, 2);
@@ -693,6 +729,7 @@ function buildProtocolPacket(event, detection) {
         expected_temperature_c: event.expected_temperature_c,
       },
       quality: signalQuality(event),
+      thread,
       detection: {
         severity: detection.severity,
         health_score: detection.health_score,
@@ -784,19 +821,42 @@ function deriveFactory(payload) {
     : clamp(16 + (pos % 14) * 2.4 + (sev === "warning" ? 18 : sev === "critical" ? 28 : 0), 0, 100);
   const plcScan = dropout ? "—" : 4 + (seq % 3);
 
-  // CMM inspection: results land during the inspection phase, deviation tracks residuals.
+  // CMM inspection: the dimensional verdict comes from the enterprise quality record,
+  // not the process severity, so the CMM and QMS stations tell the same story.
   const inspecting = phase === "inspection";
+  const outOfTol = event.cmm_verdict === "out_of_tol";
   const cmmState = inspecting
     ? "Probing datums + features"
-    : robotStatus === "HOLD"
-      ? "Idle · awaiting release"
-      : "Awaiting finished part";
-  let devUm = null;
-  if (tempGap !== null && loadGap !== null) {
-    devUm = 3 + Math.abs(Math.sin(seq / 7)) * 2 + Math.max(0, tempGap) * 1.6 + Math.abs(loadGap) * 0.5;
-    devUm = Math.round(devUm * 10) / 10;
-  }
-  const verdict = sev === "critical" ? "REJECT" : sev === "warning" ? "REVIEW" : "IN TOL";
+    : outOfTol
+      ? "Part held for rework"
+      : robotStatus === "HOLD"
+        ? "Idle · awaiting release"
+        : "Awaiting finished part";
+  const devUm =
+    event.cmm_deviation_um === null || event.cmm_deviation_um === undefined
+      ? null
+      : Number(event.cmm_deviation_um);
+  const verdict = outOfTol ? "OUT OF TOL" : "IN TOL";
+
+  // Enterprise systems of record: PLM / MES / QMS / machine-data historian.
+  const ncrOpen = Boolean(event.ncr_id);
+  const enterprise = {
+    plmPart: `${event.part_id} · ${event.part_revision}`,
+    plmTol: `±${Number(event.tolerance_um).toFixed(0)} µm`,
+    plmEco: event.eco_id || "—",
+    mesState: (event.mes_state || "in_process").replace(/_/g, " "),
+    mesWo: event.work_order,
+    mesDispatch: `rev ${event.part_revision} · ${phase}`,
+    qmsVerdict: outOfTol ? "NCR" : "IN TOL",
+    qmsNcr: event.ncr_id || "none open",
+    qmsDisp: event.disposition || "—",
+    hubOee: `${Number(event.oee_pct).toFixed(0)}%`,
+    hubArchive: `${((summary.samples || seq + 1) * 6).toLocaleString()} pts`,
+    hubTool: `${clamp(100 - Number(event.tool_wear_pct || 0), 0, 100).toFixed(0)}%`,
+    ncrOpen,
+    ecoIssued: Boolean(event.eco_id),
+    revB: event.part_revision === "B",
+  };
 
   // Edge gateway + adapters.
   const edgeQuality = dropout ? "DEGRADED" : "VALID";
@@ -837,6 +897,8 @@ function deriveFactory(payload) {
     cmmState,
     devUm,
     verdict,
+    outOfTol,
+    enterprise,
     edgeQuality,
     mtcState,
     opcState,
@@ -859,6 +921,16 @@ function nodeLiveText(node, f) {
       return `${f.robotStatus} · ${f.robotMode}`;
     case "cmm":
       return `${f.verdict} · ${f.devUm === null ? "no reading" : `${f.devUm.toFixed(1)} µm`}`;
+    case "plm":
+      return `${f.enterprise.plmPart} · ECO ${f.enterprise.ecoIssued ? f.event.eco_id : "none"}`;
+    case "mes":
+      return `${f.enterprise.mesWo} · ${f.enterprise.mesState}`;
+    case "qms":
+      return f.enterprise.ncrOpen
+        ? `${f.event.ncr_id} · ${f.enterprise.qmsDisp}`
+        : `no open NCR · in tolerance`;
+    case "hub":
+      return `OEE ${f.enterprise.hubOee} · ${f.enterprise.hubArchive} archived`;
     case "edge":
       return `${f.edgeQuality} · ${f.throughput}`;
     case "mqtt":
@@ -868,7 +940,7 @@ function nodeLiveText(node, f) {
     case "twin":
       return `health ${f.health} · ${f.detection.severity || "normal"}`;
     case "cad":
-      return `${f.event.part_id} · rev B released`;
+      return `${f.event.part_id} · rev ${f.event.part_revision} released`;
     case "cae":
       return "FEA verified · margin 1.8×";
     case "cam":
@@ -881,7 +953,9 @@ function nodeLiveText(node, f) {
 function nodeLiveTone(node, f) {
   if (!f) return "normal";
   if (node === "robot") return f.robotStatus === "HOLD" ? "critical" : f.sev === "warning" ? "warning" : "normal";
-  if (node === "cmm") return f.verdict === "REJECT" ? "critical" : f.verdict === "REVIEW" ? "warning" : "normal";
+  if (node === "cmm") return f.outOfTol ? "warning" : "normal";
+  if (node === "qms") return f.enterprise.ncrOpen ? "warning" : "normal";
+  if (node === "mes") return f.enterprise.mesState === "hold" ? "warning" : "normal";
   if (node === "edge") return f.dropout ? "warning" : "normal";
   if (["cnc", "twin", "api"].includes(node)) return f.sev;
   return "normal";
@@ -891,10 +965,12 @@ function renderFactoryMap(payload) {
   const f = deriveFactory(payload);
 
   if (!f) {
-    ["cellCnc", "cellRobot", "cellCmm", "nodeEdge", "nodeMqtt", "nodeApi", "nodeTwin"].forEach((id) =>
+    ["cellCnc", "cellRobot", "cellCmm", "nodeEdge", "nodeMqtt", "nodeApi", "nodeTwin", "nodePlm", "nodeMes", "nodeQms", "nodeHub"].forEach((id) =>
       setZoneState(id, "normal"),
     );
-    ["pCncEdge", "pRobotEdge", "pCmmApi", "pApiTwin", "pCamCnc"].forEach((id) => setThreadState(id, "normal", false));
+    ["pCncEdge", "pRobotEdge", "pCmmApi", "pApiTwin", "pCamCnc", "pMesCnc", "pCmmQms", "pApiMes", "pQmsPlm", "pPlmMes", "pHubMes"].forEach((id) =>
+      setThreadState(id, "normal", false),
+    );
     return;
   }
 
@@ -927,13 +1003,13 @@ function renderFactoryMap(payload) {
   setMapText("fmPlcScan", `PLC scan ${f.plcScan} ms`);
   setZoneState("cellRobot", robotTone);
 
-  // CMM inspection
-  const cmmTone = f.verdict === "REJECT" ? "critical" : f.verdict === "REVIEW" ? "warning" : "normal";
+  // CMM inspection (dimensional verdict from the quality record)
+  const cmmTone = f.outOfTol ? "warning" : "normal";
   setPill("fmCmmVerdictPill", "fmCmmVerdict", f.verdict, cmmTone);
   setMapText("fmCmmDev", f.devUm === null ? "— µm" : `${f.devUm.toFixed(1)} µm`);
   setMapText("fmCmmState", f.cmmState);
   setMapText("fmCmmPart", part);
-  setZoneState("cellCmm", f.inspecting ? sev : "normal");
+  setZoneState("cellCmm", cmmTone);
 
   // Edge gateway + adapters
   setMapText("fmMtcState", f.mtcState);
@@ -977,11 +1053,43 @@ function renderFactoryMap(payload) {
     thermBar.setAttribute("fill", f.tempGap !== null && f.tempGap > 5 ? "#ffbf5a" : "#2ee6d6");
   }
 
-  // Data thread severity: telemetry and platform paths react to the machine state.
+  // Enterprise systems of record: PLM, MES, QMS, machine-data historian.
+  const e = f.enterprise;
+  setMapText("fmPlmPart", e.plmPart);
+  setMapText("fmPlmTol", e.plmTol);
+  setMapText("fmPlmEco", e.plmEco);
+  const plmEco = document.getElementById("fmPlmEco");
+  if (plmEco) plmEco.classList.toggle("val-alert", e.ecoIssued);
+  setZoneState("nodePlm", "normal");
+
+  const mesTone = e.mesState === "hold" ? "warning" : "normal";
+  setPill("fmMesStatePill", "fmMesState", e.mesState.toUpperCase(), mesTone);
+  setMapText("fmMesWo", e.mesWo);
+  setMapText("fmMesDispatch", e.mesDispatch);
+  setZoneState("nodeMes", mesTone);
+
+  const qmsTone = e.ncrOpen ? "warning" : "normal";
+  setPill("fmQmsVerdictPill", "fmQmsVerdict", e.qmsVerdict, qmsTone);
+  setMapText("fmQmsNcr", e.qmsNcr);
+  setMapText("fmQmsDisp", e.qmsDisp);
+  setZoneState("nodeQms", qmsTone);
+
+  setMapText("fmHubOee", e.hubOee);
+  setMapText("fmHubArchive", e.hubArchive);
+  setMapText("fmHubTool", e.hubTool);
+  setZoneState("nodeHub", "normal");
+
+  // Data thread severity: telemetry, platform, and enterprise paths react to state.
   setThreadState("pCncEdge", f.dropout ? "critical" : sev, f.dropout);
   setThreadState("pRobotEdge", f.robotStatus === "HOLD" ? "critical" : "normal", false);
   setThreadState("pCmmApi", cmmTone, false);
   setThreadState("pApiTwin", sev, false);
+  // The corrective loop lights up while a non-conformance is open: CMM -> QMS -> PLM,
+  // and the held MES dispatch, until the corrected revision is re-released.
+  setThreadState("pCmmQms", f.outOfTol ? "warning" : "normal", false);
+  setThreadState("pQmsPlm", e.ncrOpen ? "warning" : "normal", false);
+  setThreadState("pApiMes", e.ncrOpen ? "warning" : "normal", false);
+  setThreadState("pMesCnc", mesTone, false);
 }
 
 function renderPhase(phase) {
@@ -1767,6 +1875,23 @@ els.stepButton.addEventListener("click", () => {
 els.resetButton.addEventListener("click", () => {
   reset().catch(console.error);
 });
+
+// CSV export runs client-side (equivalent to the Python /api/export.csv endpoint).
+const exportButton = document.getElementById("exportButton");
+if (exportButton) {
+  exportButton.addEventListener("click", () => {
+    const csv = window.TwinEngine.toCsv();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "digital_twin_history.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+}
 
 document.querySelectorAll("[data-node]").forEach((zone) => {
   const selectZone = () => {

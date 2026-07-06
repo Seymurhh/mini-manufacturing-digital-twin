@@ -2,3 +2,9 @@ __pycache__/
 *.py[cod]
 .DS_Store
 tmp/
+
+# Separate cloned repo worked on alongside this one (has its own git)
+predictive-maintenance-nasa/
+
+# Local editor workspace (references private folders — keep out of the public repo)
+*.code-workspace

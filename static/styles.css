@@ -20,8 +20,8 @@
   --purple: #6f4aa8;
   --shadow: 0 12px 30px rgba(18, 24, 32, 0.08);
   --shadow-strong: 0 22px 56px rgba(18, 24, 32, 0.16);
-  --dark-panel: #121a23;
-  --dark-panel-2: #182431;
+  --dark-panel: #15181b;
+  --dark-panel-2: #1c2024;
 }
 
 * {
@@ -418,7 +418,7 @@ button:focus-visible,
   padding: 18px;
   border-color: rgba(255, 255, 255, 0.16);
   background:
-    linear-gradient(180deg, rgba(24, 36, 49, 0.98), rgba(18, 26, 35, 0.98)),
+    linear-gradient(180deg, rgba(31, 35, 40, 0.98), rgba(20, 23, 27, 0.98)),
     var(--dark-panel);
   color: #f5fbfc;
   box-shadow: var(--shadow-strong);
@@ -577,7 +577,7 @@ meter::-webkit-meter-even-less-good-value {
 
 /* ===================== Factory floor digital thread map ===================== */
 .map-panel {
-  border-color: rgba(47, 111, 187, 0.3);
+  border-color: rgba(90, 104, 116, 0.32);
 }
 
 .thread-legend {
@@ -604,12 +604,13 @@ meter::-webkit-meter-even-less-good-value {
   box-shadow: 0 0 7px currentColor;
 }
 
-.lg-design { color: #2f6fbb; }
-.lg-tele { color: #0f9c90; }
-.lg-quality { color: #b36b00; }
-.lg-platform { color: #1f8ea6; }
-.lg-feedback { color: #1f7a4d; }
-.lg-part { color: #7a8a96; }
+.lg-design { color: #3c6699; }
+.lg-order { color: #5f5f96; }
+.lg-tele { color: #2b7d70; }
+.lg-quality { color: #96671c; }
+.lg-platform { color: #4c727e; }
+.lg-feedback { color: #2f7050; }
+.lg-part { color: #77828b; }
 .lg-part::before {
   box-shadow: none;
   background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
@@ -618,12 +619,12 @@ meter::-webkit-meter-even-less-good-value {
 .factory-map {
   margin-top: 4px;
   padding: 12px;
-  border: 1px solid #22303f;
+  border: 1px solid #2b2f34;
   border-radius: 12px;
   background:
-    radial-gradient(1200px 480px at 28% -12%, rgba(47, 111, 187, 0.12), transparent 60%),
-    linear-gradient(180deg, #0e1620, #0b131b);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 20px 60px rgba(0, 0, 0, 0.35);
+    radial-gradient(1200px 480px at 28% -12%, rgba(158, 174, 186, 0.06), transparent 60%),
+    linear-gradient(180deg, #191d21, #0f1215);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 .factory-map-svg {
@@ -637,6 +638,12 @@ meter::-webkit-meter-even-less-good-value {
   fill: rgba(255, 255, 255, 0.018);
   stroke: rgba(255, 255, 255, 0.07);
   stroke-width: 1;
+}
+
+/* enterprise systems-of-record band sits above the physical floor */
+.fm-band-erp {
+  fill: rgba(150, 166, 178, 0.045);
+  stroke: rgba(150, 166, 178, 0.2);
 }
 
 .fm-band-label {
@@ -682,6 +689,7 @@ meter::-webkit-meter-even-less-good-value {
 .hmi-label { fill: #5f7d92; font: 800 8px Inter, system-ui, sans-serif; letter-spacing: 0.6px; }
 .hmi-val { fill: #dbeef3; font: 800 13px Inter, system-ui, sans-serif; }
 .hmi-val.sm { font-size: 10.5px; }
+.hmi-val.val-alert { fill: #ffd28a; }
 .hmi-val-lg { fill: #eaf7f9; font: 900 26px Inter, system-ui, sans-serif; }
 .hmi-tag { fill: #7f93a4; font: 700 9px Inter, system-ui, sans-serif; }
 .hmi-mode { fill: #9fd7d2; font: 700 9.5px Inter, system-ui, sans-serif; }
@@ -715,7 +723,7 @@ meter::-webkit-meter-even-less-good-value {
 /* data threads */
 .thread-track { fill: none; stroke: rgba(255, 255, 255, 0.09); stroke-width: 3.5; stroke-linecap: round; }
 .thread-track-dash { stroke: rgba(159, 177, 189, 0.28); stroke-width: 2; stroke-dasharray: 5 6; }
-.thread-track-feedback { stroke: rgba(31, 122, 77, 0.22); stroke-width: 2.5; }
+.thread-track-feedback { stroke: rgba(90, 160, 124, 0.2); stroke-width: 2.5; }
 
 .thread {
   fill: none;
@@ -729,19 +737,21 @@ meter::-webkit-meter-even-less-good-value {
   to { stroke-dashoffset: -28; }
 }
 
-.t-design { stroke: #4a9eff; filter: drop-shadow(0 0 4px rgba(74, 158, 255, 0.7)); }
-.t-tele { stroke: #2ee6d6; filter: drop-shadow(0 0 4px rgba(46, 230, 214, 0.7)); }
-.t-quality { stroke: #f5a524; filter: drop-shadow(0 0 4px rgba(245, 165, 36, 0.7)); }
-.t-platform { stroke: #7ef6ff; filter: drop-shadow(0 0 5px rgba(126, 246, 255, 0.8)); }
-.t-feedback { stroke: #34d399; stroke-width: 1.8; stroke-dasharray: 4 10; animation-duration: 1.6s; opacity: 0.85; }
+.t-design { stroke: #6191c4; filter: drop-shadow(0 0 2px rgba(97, 145, 196, 0.4)); }
+.t-order { stroke: #8b8fc0; filter: drop-shadow(0 0 2px rgba(139, 143, 192, 0.4)); }
+.t-tele { stroke: #4aa593; filter: drop-shadow(0 0 2px rgba(74, 165, 147, 0.4)); }
+.t-quality { stroke: #cf9a45; filter: drop-shadow(0 0 2px rgba(207, 154, 69, 0.42)); }
+.t-platform { stroke: #7f99a2; filter: drop-shadow(0 0 2px rgba(127, 153, 162, 0.4)); }
+.t-feedback { stroke: #5aa07c; stroke-width: 1.8; stroke-dasharray: 4 10; animation-duration: 1.6s; opacity: 0.82; }
 
 /* moving packets */
 .pk { filter: url(#fGlow); }
-.pk-design { fill: #bcdcff; }
-.pk-tele { fill: #b6fff6; }
-.pk-quality { fill: #ffd894; }
-.pk-platform { fill: #d6fcff; }
-.pk-feedback { fill: #a8f0cf; }
+.pk-design { fill: #a7c4e4; }
+.pk-order { fill: #bcbfe0; }
+.pk-tele { fill: #8fd2c4; }
+.pk-quality { fill: #e4c184; }
+.pk-platform { fill: #adc0c7; }
+.pk-feedback { fill: #93c9ab; }
 
 /* severity states applied to cells and flows */
 .zone.sev-watch .fm-enclosure,

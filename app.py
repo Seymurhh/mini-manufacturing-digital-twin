@@ -88,8 +88,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
-        if path == "/":
-            self._serve_file(STATIC_DIR / "index.html")
+        if path == "/" or path == "/index.html":
+            self._serve_file(ROOT / "index.html")
         elif path.startswith("/static/"):
             requested = STATIC_DIR / path.removeprefix("/static/")
             self._serve_file(requested)
@@ -165,7 +165,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _serve_file(self, path: Path) -> None:
         resolved = path.resolve()
         allowed_roots = (STATIC_DIR.resolve(), DATA_DIR.resolve(), ASSETS_DIR.resolve())
-        if not any(str(resolved).startswith(str(root)) for root in allowed_roots):
+        index_file = (ROOT / "index.html").resolve()
+        if resolved != index_file and not any(
+            str(resolved).startswith(str(root)) for root in allowed_roots
+        ):
             self.send_error(HTTPStatus.FORBIDDEN, "Forbidden")
             return
         if not resolved.exists() or not resolved.is_file():

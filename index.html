@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Manufacturing Digital Twin Platform v2</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="static/styles.css">
   </head>
   <body>
     <header class="topbar">
@@ -16,7 +16,7 @@
         <button id="toggleButton" type="button">Pause</button>
         <button id="stepButton" type="button">Step</button>
         <button id="resetButton" type="button">Reset</button>
-        <a class="button-link" href="/api/export.csv">Export CSV</a>
+        <button id="exportButton" type="button" class="button-link">Export CSV</button>
       </div>
     </header>
 
@@ -52,7 +52,7 @@
       <section id="overview" class="hero-platform section-anchor" data-section="overview" aria-label="Physical CNC process and digital replica">
         <div class="hero-media">
           <img
-            src="/assets/cnc-digital-twin-cell.png"
+            src="assets/cnc-digital-twin-cell.png"
             alt="CNC machining cell with a digital twin workstation"
           >
           <div class="asset-badge physical">Physical CNC cell</div>
@@ -126,7 +126,7 @@
           <span>02</span>
           <div>
             <p class="eyebrow">Connect the factory floor</p>
-            <h2>Trace the digital thread across the plant, from design intent to live twin state.</h2>
+            <h2>Trace the digital thread across the plant — PLM, MES, and QMS systems of record, the machine floor, and the live twin.</h2>
           </div>
         </div>
 
@@ -141,31 +141,32 @@
 
           <div class="thread-legend" aria-label="Digital thread legend">
             <span class="lg lg-design">Design &amp; process plan</span>
+            <span class="lg lg-order">Production order (MES)</span>
             <span class="lg lg-tele">Machine / robot telemetry</span>
             <span class="lg lg-quality">Inspection &amp; quality</span>
             <span class="lg lg-platform">Platform transport</span>
-            <span class="lg lg-feedback">Live twin feedback</span>
+            <span class="lg lg-feedback">Change / feedback loop</span>
             <span class="lg lg-part">Part / material flow</span>
           </div>
 
           <div class="factory-map">
-            <svg id="factoryMap" class="factory-map-svg" viewBox="0 0 1240 860" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down factory floor digital thread map">
+            <svg id="factoryMap" class="factory-map-svg" viewBox="0 -232 1240 1092" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down factory floor digital thread map">
               <defs>
                 <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#33475a"/>
-                  <stop offset="1" stop-color="#22303e"/>
+                  <stop offset="0" stop-color="#3b4148"/>
+                  <stop offset="1" stop-color="#262a2f"/>
                 </linearGradient>
                 <linearGradient id="gRack" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#2b3c4c"/>
-                  <stop offset="1" stop-color="#1a2733"/>
+                  <stop offset="0" stop-color="#31363c"/>
+                  <stop offset="1" stop-color="#1c2024"/>
                 </linearGradient>
                 <linearGradient id="gPart" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#d7dee2"/>
-                  <stop offset="1" stop-color="#93a3ac"/>
+                  <stop offset="0" stop-color="#d3d7da"/>
+                  <stop offset="1" stop-color="#969a9e"/>
                 </linearGradient>
                 <radialGradient id="gScreen" cx="0.5" cy="0.3" r="0.9">
-                  <stop offset="0" stop-color="#12222e"/>
-                  <stop offset="1" stop-color="#0a151d"/>
+                  <stop offset="0" stop-color="#171c20"/>
+                  <stop offset="1" stop-color="#0d1013"/>
                 </radialGradient>
                 <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%">
                   <feGaussianBlur stdDeviation="2.4" result="b"/>
@@ -175,9 +176,11 @@
 
               <!-- ================= FLOOR BANDS ================= -->
               <g class="fm-bands" aria-hidden="true">
+                <rect class="fm-band fm-band-erp" x="16" y="-216" width="1208" height="176" rx="14"/>
                 <rect class="fm-band" x="16" y="16" width="1208" height="182" rx="14"/>
                 <rect class="fm-band" x="16" y="214" width="1208" height="372" rx="14"/>
                 <rect class="fm-band" x="16" y="602" width="1208" height="242" rx="14"/>
+                <text class="fm-band-label" x="36" y="-194">ENTERPRISE SYSTEMS · DIGITAL THREAD OF RECORD</text>
                 <text class="fm-band-label" x="36" y="40">ENGINEERING OFFICE</text>
                 <text class="fm-band-label" x="36" y="238">MACHINE SHOP · PRODUCTION FLOOR</text>
                 <text class="fm-band-label" x="36" y="626">EDGE &amp; DIGITAL TWIN PLATFORM</text>
@@ -198,7 +201,15 @@
                 <path class="thread-track" d="M770,728 L888,722"/>
                 <path class="thread-track thread-track-dash" d="M300,470 C300,505 320,512 400,514 L560,514 C600,514 616,500 620,466"/>
                 <path class="thread-track thread-track-dash" d="M640,466 C644,500 680,516 760,516 L940,516 C990,516 1002,490 1005,458"/>
-                <path class="thread-track thread-track-feedback" d="M1010,648 C1150,610 1180,540 1180,430 C1180,300 1180,180 1140,140 C1115,116 1095,112 1078,110"/>
+                <!-- enterprise digital-thread tracks -->
+                <path class="thread-track" d="M196,-92 C196,-40 214,10 235,48"/>
+                <path class="thread-track" d="M284,-130 C316,-130 332,-130 364,-130"/>
+                <path class="thread-track" d="M452,-92 C452,60 372,190 306,282"/>
+                <path class="thread-track" d="M700,352 C700,180 720,20 720,-92"/>
+                <path class="thread-track thread-track-feedback" d="M690,664 C650,300 486,30 452,-92"/>
+                <path class="thread-track thread-track-feedback" d="M720,-168 C720,-206 420,-214 300,-210 C240,-208 200,-192 196,-168"/>
+                <path class="thread-track" d="M1130,700 C1205,640 1214,380 1206,150 C1200,20 1170,-100 1098,-128"/>
+                <path class="thread-track thread-track-dash" d="M922,-130 C860,-72 620,-72 540,-130"/>
 
                 <!-- animated flows -->
                 <path id="pCadCae" class="thread t-design" d="M330,110 C400,96 460,96 525,110"/>
@@ -211,7 +222,62 @@
                 <path id="pEdgeMqtt" class="thread t-platform" d="M273,720 L372,724"/>
                 <path id="pMqttApi" class="thread t-platform" d="M520,728 L610,728"/>
                 <path id="pApiTwin" class="thread t-platform" d="M770,728 L888,722"/>
-                <path id="pTwinEng" class="thread t-feedback" d="M1010,648 C1150,610 1180,540 1180,430 C1180,300 1180,180 1140,140 C1115,116 1095,112 1078,110"/>
+                <!-- enterprise digital-thread flows -->
+                <path id="pPlmCad" class="thread t-design" d="M196,-92 C196,-40 214,10 235,48"/>
+                <path id="pPlmMes" class="thread t-order" d="M284,-130 C316,-130 332,-130 364,-130"/>
+                <path id="pMesCnc" class="thread t-order" d="M452,-92 C452,60 372,190 306,282"/>
+                <path id="pCmmQms" class="thread t-quality" d="M700,352 C700,180 720,20 720,-92"/>
+                <path id="pApiMes" class="thread t-feedback" d="M690,664 C650,300 486,30 452,-92"/>
+                <path id="pQmsPlm" class="thread t-feedback" d="M720,-168 C720,-206 420,-214 300,-210 C240,-208 200,-192 196,-168"/>
+                <path id="pTwinHub" class="thread t-tele" d="M1130,700 C1205,640 1214,380 1206,150 C1200,20 1170,-100 1098,-128"/>
+                <path id="pHubMes" class="thread t-order" d="M922,-130 C860,-72 620,-72 540,-130"/>
+              </g>
+
+              <!-- ================= ENTERPRISE SYSTEMS OF RECORD ================= -->
+              <g class="zone" id="nodePlm" data-node="plm" tabindex="0" role="button" aria-label="PLM product lifecycle management record">
+                <text class="fm-title" x="196" y="-176" text-anchor="middle">PLM · PRODUCT RECORD</text>
+                <rect class="fm-server" x="108" y="-168" width="176" height="76" rx="10"/>
+                <text class="hmi-label" x="118" y="-146">PART / REV</text>
+                <text class="hmi-val sm" id="fmPlmPart" x="274" y="-146" text-anchor="end">BRACKET-0000 · A</text>
+                <text class="hmi-label" x="118" y="-124">TOLERANCE</text>
+                <text class="hmi-val sm" id="fmPlmTol" x="274" y="-124" text-anchor="end">±25 µm</text>
+                <text class="hmi-label" x="118" y="-102">CHANGE</text>
+                <text class="hmi-val sm" id="fmPlmEco" x="274" y="-102" text-anchor="end">—</text>
+              </g>
+
+              <g class="zone" id="nodeMes" data-node="mes" tabindex="0" role="button" aria-label="MES manufacturing execution system">
+                <text class="fm-title" x="452" y="-176" text-anchor="middle">MES · EXECUTION</text>
+                <rect class="fm-server" x="364" y="-168" width="176" height="76" rx="10"/>
+                <rect class="status-pill" id="fmMesStatePill" x="374" y="-162" width="76" height="18" rx="9"/>
+                <text class="status-pill-tx" id="fmMesState" x="412" y="-149" text-anchor="middle">IN PROC</text>
+                <text class="hmi-tag" x="530" y="-149" text-anchor="end">MOM</text>
+                <text class="hmi-label" x="374" y="-122">WORK ORDER</text>
+                <text class="hmi-val sm" id="fmMesWo" x="530" y="-122" text-anchor="end">WO-1041</text>
+                <text class="hmi-label" x="374" y="-100">DISPATCH</text>
+                <text class="hmi-val sm" id="fmMesDispatch" x="530" y="-100" text-anchor="end">rev A · warmup</text>
+              </g>
+
+              <g class="zone" id="nodeQms" data-node="qms" tabindex="0" role="button" aria-label="QMS quality management system">
+                <text class="fm-title" x="720" y="-176" text-anchor="middle">QMS · QUALITY</text>
+                <rect class="fm-server" x="632" y="-168" width="176" height="76" rx="10"/>
+                <rect class="status-pill" id="fmQmsVerdictPill" x="642" y="-162" width="86" height="18" rx="9"/>
+                <text class="status-pill-tx" id="fmQmsVerdict" x="685" y="-149" text-anchor="middle">IN TOL</text>
+                <text class="hmi-tag" x="798" y="-149" text-anchor="end">SPC · CAPA</text>
+                <text class="hmi-label" x="642" y="-122">NCR</text>
+                <text class="hmi-val sm" id="fmQmsNcr" x="798" y="-122" text-anchor="end">none open</text>
+                <text class="hmi-label" x="642" y="-100">DISPOSITION</text>
+                <text class="hmi-val sm" id="fmQmsDisp" x="798" y="-100" text-anchor="end">—</text>
+              </g>
+
+              <g class="zone" id="nodeHub" data-node="hub" tabindex="0" role="button" aria-label="Machine data historian and OEE rollup">
+                <text class="fm-title" x="1010" y="-176" text-anchor="middle">MACHINE DATA · HISTORIAN</text>
+                <rect class="fm-server" x="922" y="-168" width="176" height="76" rx="10"/>
+                <text class="hmi-label" x="932" y="-146">OEE</text>
+                <text class="hmi-val sm" id="fmHubOee" x="1088" y="-146" text-anchor="end">84%</text>
+                <text class="hmi-label" x="932" y="-124">TIME-SERIES</text>
+                <text class="hmi-val sm" id="fmHubArchive" x="1088" y="-124" text-anchor="end">0 pts</text>
+                <text class="hmi-label" x="932" y="-102">TOOL LIFE</text>
+                <text class="hmi-val sm" id="fmHubTool" x="1088" y="-102" text-anchor="end">96%</text>
               </g>
 
               <!-- ================= ENGINEERING OFFICE ================= -->
@@ -401,7 +467,15 @@
                 <circle class="pk pk-platform" r="3.4"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#pEdgeMqtt"/></animateMotion></circle>
                 <circle class="pk pk-platform" r="3.4"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#pMqttApi"/></animateMotion></circle>
                 <circle class="pk pk-platform" r="3.4"><animateMotion dur="2.0s" repeatCount="indefinite"><mpath href="#pApiTwin"/></animateMotion></circle>
-                <circle class="pk pk-feedback" r="3.2"><animateMotion dur="7.2s" repeatCount="indefinite"><mpath href="#pTwinEng"/></animateMotion></circle>
+                <!-- enterprise digital-thread packets -->
+                <circle class="pk pk-design" r="3.4"><animateMotion dur="2.8s" repeatCount="indefinite"><mpath href="#pPlmCad"/></animateMotion></circle>
+                <circle class="pk pk-order" r="3.4"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#pPlmMes"/></animateMotion></circle>
+                <circle class="pk pk-order" r="3.6"><animateMotion dur="4.4s" repeatCount="indefinite"><mpath href="#pMesCnc"/></animateMotion></circle>
+                <circle class="pk pk-quality" r="3.6"><animateMotion dur="3.8s" repeatCount="indefinite"><mpath href="#pCmmQms"/></animateMotion></circle>
+                <circle class="pk pk-feedback" r="3.2"><animateMotion dur="5.2s" repeatCount="indefinite"><mpath href="#pApiMes"/></animateMotion></circle>
+                <circle class="pk pk-feedback" r="3.2"><animateMotion dur="6.4s" repeatCount="indefinite"><mpath href="#pQmsPlm"/></animateMotion></circle>
+                <circle class="pk pk-tele" r="3.6"><animateMotion dur="6.8s" repeatCount="indefinite"><mpath href="#pTwinHub"/></animateMotion></circle>
+                <circle class="pk pk-order" r="3.4"><animateMotion dur="4.0s" repeatCount="indefinite"><mpath href="#pHubMes"/></animateMotion></circle>
               </g>
             </svg>
           </div>
@@ -749,6 +823,7 @@
       </section>
     </main>
 
-    <script src="/static/dashboard.js"></script>
+    <script src="static/twin-engine.js"></script>
+    <script src="static/dashboard.js"></script>
   </body>
 </html>
