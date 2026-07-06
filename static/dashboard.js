@@ -4,7 +4,7 @@ const state = {
   intervalMs: 900,
   protocol: "mqtt",
   lesson: "twin",
-  node: "machine",
+  node: "cnc",
   sensor: "load",
   source: "synthetic",
   collection: "controller",
@@ -40,41 +40,65 @@ const SECTION_CAPTIONS = {
 };
 
 const NODE_DETAILS = {
-  machine: {
-    title: "CNC machine",
-    description: "The physical milling process creates the real state: spindle load, tool engagement, heat, vibration, feed, and part quality risk.",
-    latency: "Controller values can update in milliseconds; auxiliary sensors vary by sampling plan.",
-    failure: "Program overrides, wrong workholding, or missing operation context can make raw data misleading.",
+  cad: {
+    title: "CAD · product design",
+    description: "The origin of the digital thread: part geometry, tolerances, datums, and material intent are defined here.",
+    interface: "Native CAD model with PMI released downstream to CAM and inspection.",
+    watch: "Design changes must propagate to the process plan and inspection, or the thread breaks.",
   },
-  sensors: {
-    title: "Sensor and controller signals",
-    description: "The twin combines controller values with sensors so it can see both commanded behavior and measured process response.",
-    latency: "Vibration can be high-frequency; supervisory dashboards often consume reduced features at 1-10 Hz.",
-    failure: "Bad calibration, dropout, or unit mismatch can make the twin less trustworthy than the machine itself.",
+  cae: {
+    title: "CAE · simulation",
+    description: "Validates the design and the planned process with FEA and machining simulation before any metal is cut.",
+    interface: "Simulation margins and results linked back to the specific part revision.",
+    watch: "Simulation assumptions that no longer match the real fixture or stock mislead everyone downstream.",
+  },
+  cam: {
+    title: "CAM · NC programming",
+    description: "Turns design intent into a machine process plan: toolpaths, feeds, speeds, and the posted NC program.",
+    interface: "Posts the NC program to the CNC and the handling sequence to the robot cell.",
+    watch: "A wrong post-processor or a stale program sends bad instructions straight to the floor.",
+  },
+  cnc: {
+    title: "CNC machining center",
+    description: "The physical cut. Its controller and sensors produce the live state that the digital twin must mirror.",
+    interface: "MTConnect adapter and OPC UA served from the cell edge computer.",
+    watch: "Program overrides, wrong workholding, or missing operation context can make raw data misleading.",
+  },
+  robot: {
+    title: "Robot handling cell",
+    description: "Loads blanks, unloads finished parts, and moves work between the machine and inspection under PLC control.",
+    interface: "PLC and robot controller exposed to the platform over OPC UA.",
+    watch: "A machine fault should interlock the cell and pause automated handling, not keep feeding parts.",
+  },
+  cmm: {
+    title: "CMM · inspection",
+    description: "Measures the finished part against the model and links quality results back to the part and process.",
+    interface: "Inspection results and deviations published to the API / state engine.",
+    watch: "Out-of-tolerance features flag process drift early, before scrap and rework accumulate.",
   },
   edge: {
     title: "Edge gateway",
-    description: "The edge layer timestamps, normalizes, buffers, and quality-checks data before it becomes a platform event.",
-    latency: "Usually 5-500 ms depending on buffering, filtering, and network conditions.",
-    failure: "Clock drift, stale packets, and dropped fields are common issues that must be surfaced.",
+    description: "Timestamps, normalizes, buffers, and quality-checks machine and robot data right at the cell edge.",
+    interface: "Hosts the MTConnect adapter and OPC UA client, then publishes clean events.",
+    watch: "Clock drift, dropped fields, and stale packets must be surfaced, never silently passed through.",
   },
-  protocol: {
-    title: "Protocol layer",
-    description: "Protocols define how machine data is represented and transported. MQTT, OPC UA, and MTConnect solve different parts of the factory problem.",
-    latency: "MQTT telemetry is often near-real-time; structured interoperability layers may add modeling overhead.",
-    failure: "A valid packet can still be semantically wrong if topic, unit, phase, or asset identity is missing.",
+  mqtt: {
+    title: "MQTT broker",
+    description: "Transports each clean event to every subscriber: the twin engine, the dashboard, and storage.",
+    interface: "Publish / subscribe on factory topics with QoS and retained state.",
+    watch: "A valid packet can still be wrong if topic, unit, phase, or asset identity is missing.",
   },
-  model: {
-    title: "Twin model",
-    description: "The digital replica compares actual signals against expected process behavior for the active machining phase.",
-    latency: "Simple rule and residual models can run per event; heavier simulation may run asynchronously.",
-    failure: "A model trained on the wrong operation window will flag normal behavior or miss true process drift.",
+  api: {
+    title: "API · state engine",
+    description: "Validates events, updates current twin state, runs the expected-vs-actual model, and serves the dashboard.",
+    interface: "REST and WebSocket interfaces sitting above the machine connectors.",
+    watch: "A model tuned to the wrong operation window will flag normal behavior or miss real drift.",
   },
-  operator: {
-    title: "Human decision layer",
-    description: "The platform translates evidence into reviewable action instead of hiding uncertainty behind full automation.",
-    latency: "Immediate alarms are possible, but high-impact changes should include human review and traceable rationale.",
-    failure: "Recommendations without evidence, confidence, or required checks are hard to trust on a factory floor.",
+  twin: {
+    title: "Digital twin dashboard",
+    description: "The live view engineers watch: health, severity, model gap, and the recommended next action.",
+    interface: "Reads twin state and feeds live status plus inspection findings back to engineering.",
+    watch: "Recommendations without evidence, confidence, and required checks are hard to trust on the floor.",
   },
 };
 
@@ -82,7 +106,7 @@ const LESSONS = {
   twin: {
     title: "What is a digital twin?",
     step: "Step 1 of 3",
-    node: "model",
+    node: "twin",
     body: "A manufacturing digital twin is a live digital representation of a physical asset, updated by operational data and compared with an expected model.",
     points: [
       "It is more than a dashboard because it keeps state and process context.",
@@ -93,7 +117,7 @@ const LESSONS = {
   flow: {
     title: "How does factory data flow?",
     step: "Step 2 of 3",
-    node: "protocol",
+    node: "mqtt",
     body: "Machine signals become useful only after they are captured, timestamped, normalized, transported, validated, and connected to the right operation phase.",
     points: [
       "Sensors and controller values measure the physical process.",
@@ -104,7 +128,7 @@ const LESSONS = {
   case: {
     title: "CNC machining case study",
     step: "Step 3 of 3",
-    node: "machine",
+    node: "cnc",
     body: "This case models a bracket milling cycle where the twin watches roughing, finishing, thermal behavior, chatter risk, tool wear, feed mismatch, and telemetry health.",
     points: [
       "The physical process is one CNC milling center cutting one part family.",
@@ -296,6 +320,8 @@ const els = {
   nodeDescription: document.getElementById("nodeDescription"),
   nodeLatency: document.getElementById("nodeLatency"),
   nodeFailure: document.getElementById("nodeFailure"),
+  nodeLive: document.getElementById("nodeLive"),
+  factoryMap: document.getElementById("factoryMap"),
   lessonTitle: document.getElementById("lessonTitle"),
   lessonStep: document.getElementById("lessonStep"),
   lessonBody: document.getElementById("lessonBody"),
@@ -469,12 +495,22 @@ function setupLearningPath() {
 }
 
 function renderNode() {
-  const detail = NODE_DETAILS[state.node] || NODE_DETAILS.machine;
+  const detail = NODE_DETAILS[state.node] || NODE_DETAILS.cnc;
   els.nodeTitle.textContent = detail.title;
   els.nodeDescription.textContent = detail.description;
-  els.nodeLatency.textContent = detail.latency;
-  els.nodeFailure.textContent = detail.failure;
-  setActiveButtons("[data-node]", "node", state.node);
+  els.nodeLatency.textContent = detail.interface;
+  els.nodeFailure.textContent = detail.watch;
+
+  const f = deriveFactory(state.lastPayload);
+  if (els.nodeLive) {
+    els.nodeLive.textContent = nodeLiveText(state.node, f);
+    const tone = nodeLiveTone(state.node, f);
+    els.nodeLive.className = "live-chip" + (tone && tone !== "normal" ? ` ${tone}` : "");
+  }
+
+  document.querySelectorAll(".zone[data-node]").forEach((zone) => {
+    zone.classList.toggle("selected", zone.dataset.node === state.node);
+  });
 }
 
 function renderLesson() {
@@ -666,15 +702,286 @@ function buildProtocolPacket(event, detection) {
   }, null, 2);
 }
 
-function renderFlowSeverity(detection) {
-  const severity = severityClass(detection?.severity);
-  document.querySelectorAll("[data-node]").forEach((button) => {
-    button.classList.remove("watch", "warning", "critical");
-    if (severity === "normal") return;
-    if (["machine", "sensors", "model", "operator"].includes(button.dataset.node)) {
-      button.classList.add(severity);
-    }
-  });
+function setMapText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function setZoneState(id, severity) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove("sev-watch", "sev-warning", "sev-critical");
+  if (severity && severity !== "normal") el.classList.add(`sev-${severity}`);
+}
+
+function setThreadState(id, severity, degraded) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove("sev-warning", "sev-critical", "degraded");
+  if (severity === "warning") el.classList.add("sev-warning");
+  else if (severity === "critical") el.classList.add("sev-critical");
+  if (degraded) el.classList.add("degraded");
+}
+
+function setPill(pillId, textId, text, tone) {
+  const pill = document.getElementById(pillId);
+  const label = document.getElementById(textId);
+  const cls = tone === "critical" ? "crit" : tone === "warning" ? "warn" : null;
+  if (label) {
+    label.textContent = text;
+    label.classList.remove("warn", "crit");
+    if (cls) label.classList.add(cls);
+  }
+  if (pill) {
+    pill.classList.remove("warn", "crit");
+    if (cls) pill.classList.add(cls);
+  }
+}
+
+// Derive robot, inspection, edge, transport, and platform values from the live CNC stream
+// so every station on the map reflects the same synthetic process in a coherent way.
+function deriveFactory(payload) {
+  const latest = payload && payload.latest;
+  const summary = (payload && payload.summary) || {};
+  if (!latest || !latest.event) return null;
+
+  const event = latest.event;
+  const detection = latest.detection || {};
+  const recommendation = latest.recommendation || {};
+  const seq = Number(event.sequence) || 0;
+  const pos = ((seq % CYCLE_LENGTH) + CYCLE_LENGTH) % CYCLE_LENGTH;
+  const phase = event.process_phase;
+  const sev = severityClass(detection.severity);
+  const codes = detection.anomaly_codes || [];
+  const dropout = codes.includes("sensor_dropout");
+  const parts = Math.floor(seq / CYCLE_LENGTH);
+
+  const load = event.spindle_load_pct;
+  const temp = event.temperature_c;
+  const vib = event.vibration_rms;
+  const hasLoad = load !== null && load !== undefined;
+  const hasTemp = temp !== null && temp !== undefined;
+  const hasVib = vib !== null && vib !== undefined;
+  const loadGap = hasLoad ? Number(load) - Number(event.expected_load_pct) : null;
+  const tempGap = hasTemp ? Number(temp) - Number(event.expected_temperature_c) : null;
+  const msgRate = 1000 / state.intervalMs;
+
+  // Robot handling cell: sequenced to the machining cycle, interlocked on faults.
+  let robotStatus = "RUN";
+  let robotMode = "Standby · cycle in progress";
+  if (dropout || sev === "critical") {
+    robotStatus = "HOLD";
+    robotMode = "Safety interlock · line paused";
+  } else if (phase === "warmup") {
+    robotMode = "Loading blank into fixture";
+  } else if (phase === "inspection") {
+    robotMode = "Unloading · transfer to CMM";
+  } else if (sev === "warning") {
+    robotMode = "Holding · monitoring cell";
+  }
+  const robotAxis = dropout
+    ? null
+    : clamp(16 + (pos % 14) * 2.4 + (sev === "warning" ? 18 : sev === "critical" ? 28 : 0), 0, 100);
+  const plcScan = dropout ? "—" : 4 + (seq % 3);
+
+  // CMM inspection: results land during the inspection phase, deviation tracks residuals.
+  const inspecting = phase === "inspection";
+  const cmmState = inspecting
+    ? "Probing datums + features"
+    : robotStatus === "HOLD"
+      ? "Idle · awaiting release"
+      : "Awaiting finished part";
+  let devUm = null;
+  if (tempGap !== null && loadGap !== null) {
+    devUm = 3 + Math.abs(Math.sin(seq / 7)) * 2 + Math.max(0, tempGap) * 1.6 + Math.abs(loadGap) * 0.5;
+    devUm = Math.round(devUm * 10) / 10;
+  }
+  const verdict = sev === "critical" ? "REJECT" : sev === "warning" ? "REVIEW" : "IN TOL";
+
+  // Edge gateway + adapters.
+  const edgeQuality = dropout ? "DEGRADED" : "VALID";
+  const mtcState = dropout ? "UNAVAILABLE" : phase === "inspection" ? "READY" : "ACTIVE";
+  const opcState = robotStatus === "HOLD" ? "sub · stalled" : "sub · 20 Hz";
+  const throughput = dropout ? "buffering" : `${msgRate.toFixed(1)} msg/s`;
+
+  const mqttMsgs = summary.samples || seq + 1;
+  const apiLatency = dropout ? 40 : 6 + Math.round(Math.abs(Math.sin(seq / 5)) * 7);
+  const apiReq = Math.max(1, Math.round(msgRate * 4));
+  const version = summary.samples || seq + 1;
+
+  return {
+    event,
+    detection,
+    recommendation,
+    summary,
+    seq,
+    pos,
+    phase,
+    sev,
+    codes,
+    dropout,
+    parts,
+    load,
+    temp,
+    vib,
+    hasLoad,
+    hasTemp,
+    hasVib,
+    loadGap,
+    tempGap,
+    robotStatus,
+    robotMode,
+    robotAxis,
+    plcScan,
+    inspecting,
+    cmmState,
+    devUm,
+    verdict,
+    edgeQuality,
+    mtcState,
+    opcState,
+    throughput,
+    mqttMsgs,
+    apiLatency,
+    apiReq,
+    version,
+    health: detection.health_score,
+    decision: recommendation.decision,
+  };
+}
+
+function nodeLiveText(node, f) {
+  if (!f) return "waiting for telemetry";
+  switch (node) {
+    case "cnc":
+      return `${f.hasLoad ? `${Number(f.load).toFixed(0)}% load` : "load ——"} · vib ${f.hasVib ? Number(f.vib).toFixed(2) : "——"} · ${f.hasTemp ? `${Number(f.temp).toFixed(0)}°C` : "temp ——"}`;
+    case "robot":
+      return `${f.robotStatus} · ${f.robotMode}`;
+    case "cmm":
+      return `${f.verdict} · ${f.devUm === null ? "no reading" : `${f.devUm.toFixed(1)} µm`}`;
+    case "edge":
+      return `${f.edgeQuality} · ${f.throughput}`;
+    case "mqtt":
+      return `${f.mqttMsgs} published · QoS 1`;
+    case "api":
+      return `${f.apiLatency} ms · state v${f.version}`;
+    case "twin":
+      return `health ${f.health} · ${f.detection.severity || "normal"}`;
+    case "cad":
+      return `${f.event.part_id} · rev B released`;
+    case "cae":
+      return "FEA verified · margin 1.8×";
+    case "cam":
+      return `${titleCase(f.phase)} toolpath active`;
+    default:
+      return "live";
+  }
+}
+
+function nodeLiveTone(node, f) {
+  if (!f) return "normal";
+  if (node === "robot") return f.robotStatus === "HOLD" ? "critical" : f.sev === "warning" ? "warning" : "normal";
+  if (node === "cmm") return f.verdict === "REJECT" ? "critical" : f.verdict === "REVIEW" ? "warning" : "normal";
+  if (node === "edge") return f.dropout ? "warning" : "normal";
+  if (["cnc", "twin", "api"].includes(node)) return f.sev;
+  return "normal";
+}
+
+function renderFactoryMap(payload) {
+  const f = deriveFactory(payload);
+
+  if (!f) {
+    ["cellCnc", "cellRobot", "cellCmm", "nodeEdge", "nodeMqtt", "nodeApi", "nodeTwin"].forEach((id) =>
+      setZoneState(id, "normal"),
+    );
+    ["pCncEdge", "pRobotEdge", "pCmmApi", "pApiTwin", "pCamCnc"].forEach((id) => setThreadState(id, "normal", false));
+    return;
+  }
+
+  const part = f.event.part_id;
+  const sev = f.sev;
+  const criticalTone = f.dropout || sev === "critical" ? "critical" : sev === "warning" ? "warning" : "normal";
+
+  // Engineering office
+  setMapText("fmCadPart", part);
+  setMapText("fmCamPhase", titleCase(f.phase));
+
+  // CNC machining center
+  const cncStatus = f.dropout ? "DATA LOSS" : sev === "critical" ? "FAULT" : sev === "warning" ? "WATCH" : "RUN";
+  setPill("fmCncStatusPill", "fmCncStatus", cncStatus, criticalTone);
+  setMapText("fmCncPhase", titleCase(f.phase));
+  setMapText("fmCncLoad", f.hasLoad ? `${Number(f.load).toFixed(0)}%` : "——");
+  setMapText("fmCncRpm", `${fmt(f.event.spindle_speed_rpm, "", 0)}`);
+  setMapText("fmCncFeed", `${fmt(f.event.feed_rate_mm_min, "", 0)}`);
+  setMapText("fmCncTemp", f.hasTemp ? `${Number(f.temp).toFixed(0)}°` : "——");
+  setMapText("fmCncVib", f.hasVib ? Number(f.vib).toFixed(2) : "——");
+  setMapText("fmCncWear", fmt(f.event.tool_wear_pct, "%", 0));
+  setZoneState("cellCnc", sev);
+
+  // Robot handling cell
+  const robotTone = f.robotStatus === "HOLD" ? "critical" : sev === "warning" ? "warning" : "normal";
+  setPill("fmRobotStatusPill", "fmRobotStatus", f.robotStatus, robotTone);
+  setMapText("fmRobotMode", f.robotMode);
+  setMapText("fmRobotAxis", f.robotAxis === null ? "——" : `${f.robotAxis.toFixed(0)}%`);
+  setMapText("fmRobotCycles", String(f.parts));
+  setMapText("fmPlcScan", `PLC scan ${f.plcScan} ms`);
+  setZoneState("cellRobot", robotTone);
+
+  // CMM inspection
+  const cmmTone = f.verdict === "REJECT" ? "critical" : f.verdict === "REVIEW" ? "warning" : "normal";
+  setPill("fmCmmVerdictPill", "fmCmmVerdict", f.verdict, cmmTone);
+  setMapText("fmCmmDev", f.devUm === null ? "— µm" : `${f.devUm.toFixed(1)} µm`);
+  setMapText("fmCmmState", f.cmmState);
+  setMapText("fmCmmPart", part);
+  setZoneState("cellCmm", f.inspecting ? sev : "normal");
+
+  // Edge gateway + adapters
+  setMapText("fmMtcState", f.mtcState);
+  setMapText("fmOpcState", f.opcState);
+  setMapText("fmEdgeThroughput", f.throughput);
+  setMapText("fmEdgeQuality", f.edgeQuality);
+  setZoneState("nodeEdge", f.dropout ? "warning" : "normal");
+  const ledEdge = document.getElementById("ledEdge");
+  if (ledEdge) ledEdge.classList.toggle("led-on", !f.dropout);
+
+  // MQTT broker
+  setMapText("fmMqttTopic", String(f.event.topic).replace(f.event.machine_id, "…"));
+  setMapText("fmMqttMsgs", String(f.mqttMsgs));
+
+  // API / state engine
+  setMapText("fmApiLatency", `${f.apiLatency} ms`);
+  setMapText("fmApiReq", `${f.apiReq} /s`);
+  setMapText("fmApiVersion", `v${f.version}`);
+  setZoneState("nodeApi", f.dropout ? "warning" : "normal");
+
+  // Digital twin dashboard
+  setMapText("fmTwinHealth", f.health === null || f.health === undefined ? "—" : String(f.health));
+  setPill("fmTwinSeverityPill", "fmTwinSeverity", (f.detection.severity || "normal").toUpperCase(), criticalTone);
+  setMapText(
+    "fmTwinGap",
+    f.loadGap === null || f.tempGap === null
+      ? "data incomplete"
+      : `load ${f.loadGap >= 0 ? "+" : ""}${f.loadGap.toFixed(1)} · therm ${f.tempGap >= 0 ? "+" : ""}${f.tempGap.toFixed(1)}`,
+  );
+  setMapText("fmTwinDecision", titleCase(f.decision || "proceed"));
+  setZoneState("nodeTwin", sev);
+
+  const loadBar = document.getElementById("fmTwinBarLoad");
+  const thermBar = document.getElementById("fmTwinBarThermal");
+  if (loadBar) {
+    loadBar.setAttribute("width", String(clamp(f.hasLoad ? (Number(f.load) / 100) * 104 : 0, 2, 104)));
+  }
+  if (thermBar) {
+    const tfrac = f.hasTemp ? clamp((Number(f.temp) - 20) / 45, 0, 1) : 0;
+    thermBar.setAttribute("width", String(clamp(tfrac * 104, 2, 104)));
+    thermBar.setAttribute("fill", f.tempGap !== null && f.tempGap > 5 ? "#ffbf5a" : "#2ee6d6");
+  }
+
+  // Data thread severity: telemetry and platform paths react to the machine state.
+  setThreadState("pCncEdge", f.dropout ? "critical" : sev, f.dropout);
+  setThreadState("pRobotEdge", f.robotStatus === "HOLD" ? "critical" : "normal", false);
+  setThreadState("pCmmApi", cmmTone, false);
+  setThreadState("pApiTwin", sev, false);
 }
 
 function renderPhase(phase) {
@@ -787,263 +1094,413 @@ function roundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
-function toolPathPoint(event, now) {
-  if (!event) {
-    return { nx: 0.18, ny: 0.24, cutting: false };
-  }
+// Part geometry expressed as fractions of the raw stock (top-down view).
+const POCKET = { x0: 0.18, x1: 0.82, y0: 0.26, y1: 0.72 };
+const PROFILE = { x0: 0.07, x1: 0.93, y0: 0.1, y1: 0.9 };
+const ROUGH_PASSES = 7;
+const HOLES = [
+  [0.12, 0.15],
+  [0.88, 0.15],
+  [0.12, 0.85],
+  [0.88, 0.85],
+];
 
-  const phase = event.process_phase;
-  const p = phaseProgress(event);
-  const timeShift = state.reducedMotion ? 0 : Math.sin(now / 520) * 0.012;
+// Eased machining state so the cut animates smoothly between discrete events.
+const MACH = { rough: 0, finish: 0, lastPos: null };
 
-  if (phase === "warmup") {
-    return { nx: 0.12 + p * 0.12, ny: 0.16 + timeShift, cutting: false };
-  }
-
-  if (phase === "roughing") {
-    const passes = 7;
-    const scaled = p * passes;
-    const line = Math.min(passes - 1, Math.floor(scaled));
-    const local = scaled - line;
-    const direction = line % 2 === 0 ? local : 1 - local;
-    return {
-      nx: 0.18 + direction * 0.64,
-      ny: 0.27 + line * 0.075 + timeShift,
-      cutting: true,
-    };
-  }
-
-  if (phase === "finishing") {
-    const perimeter = p * 4;
-    if (perimeter < 1) return { nx: 0.18 + perimeter * 0.64, ny: 0.22, cutting: true };
-    if (perimeter < 2) return { nx: 0.82, ny: 0.22 + (perimeter - 1) * 0.52, cutting: true };
-    if (perimeter < 3) return { nx: 0.82 - (perimeter - 2) * 0.64, ny: 0.74, cutting: true };
-    return { nx: 0.18, ny: 0.74 - (perimeter - 3) * 0.52, cutting: true };
-  }
-
+function serpentinePos(rough) {
+  const total = clamp(rough, 0, 1) * ROUGH_PASSES;
+  const line = Math.min(ROUGH_PASSES - 1, Math.floor(total));
+  const frac = total - line;
+  const dir = line % 2 === 0 ? frac : 1 - frac;
+  const strip = (POCKET.y1 - POCKET.y0) / ROUGH_PASSES;
   return {
-    nx: 0.5 + Math.cos((state.reducedMotion ? 0 : now) / 800) * 0.18,
-    ny: 0.48 + Math.sin((state.reducedMotion ? 0 : now) / 920) * 0.14,
-    cutting: false,
+    nx: POCKET.x0 + dir * (POCKET.x1 - POCKET.x0),
+    ny: POCKET.y0 + (line + 0.5) * strip,
+    cutting: true,
   };
 }
 
-function drawToolPath(ctx, work) {
-  ctx.save();
-  ctx.setLineDash([10, 8]);
-  ctx.strokeStyle = "rgba(47, 111, 187, 0.55)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let line = 0; line < 7; line += 1) {
-    const y = work.y + work.h * (0.27 + line * 0.075);
-    const x1 = work.x + work.w * 0.18;
-    const x2 = work.x + work.w * 0.82;
-    if (line % 2 === 0) {
-      ctx.moveTo(x1, y);
-      ctx.lineTo(x2, y);
-    } else {
-      ctx.moveTo(x2, y);
-      ctx.lineTo(x1, y);
-    }
-  }
-  ctx.stroke();
+function contourPos(finish) {
+  const t = clamp(finish, 0, 1) * 4;
+  if (t < 1) return { nx: lerp(PROFILE.x0, PROFILE.x1, t), ny: PROFILE.y0, cutting: true };
+  if (t < 2) return { nx: PROFILE.x1, ny: lerp(PROFILE.y0, PROFILE.y1, t - 1), cutting: true };
+  if (t < 3) return { nx: lerp(PROFILE.x1, PROFILE.x0, t - 2), ny: PROFILE.y1, cutting: true };
+  return { nx: PROFILE.x0, ny: lerp(PROFILE.y1, PROFILE.y0, t - 3), cutting: true };
+}
 
-  ctx.setLineDash([16, 10]);
-  ctx.strokeStyle = "rgba(8, 127, 119, 0.68)";
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(work.x + work.w * 0.18, work.y + work.h * 0.22, work.w * 0.64, work.h * 0.52);
+// Logical (non-eased) tool target for the numeric readout.
+function machineToolTarget(event) {
+  if (!event) return { nx: 0.5, ny: 0.12, cutting: false };
+  const phase = event.process_phase;
+  if (phase === "roughing") return serpentinePos(machiningProgress(event, "roughing"));
+  if (phase === "finishing") return contourPos(machiningProgress(event, "finishing"));
+  return { nx: 0.5, ny: 0.12, cutting: false };
+}
+
+function drawClamp(ctx, x, y, w, h) {
+  ctx.save();
+  roundedRect(ctx, x - w / 2, y - h / 2, w, h, 4);
+  ctx.fillStyle = "#2a3a48";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+  ctx.lineWidth = 1;
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, Math.min(w, h) * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = "#151f28";
+  ctx.fill();
   ctx.restore();
 }
 
-function drawRemovedMaterial(ctx, work, event) {
-  const rough = machiningProgress(event, "roughing");
-  const finish = machiningProgress(event, "finishing");
-  const pocketX = work.x + work.w * 0.22;
-  const pocketY = work.y + work.h * 0.28;
-  const pocketW = work.w * 0.56 * rough;
-  const pocketH = work.h * 0.38;
+// Reveal the roughed pocket serpentine-pass by pass, up to the current progress.
+function drawPocket(ctx, stock, rough) {
+  if (rough <= 0.002) return;
+  const px = stock.x + stock.w * POCKET.x0;
+  const py = stock.y + stock.h * POCKET.y0;
+  const pw = stock.w * (POCKET.x1 - POCKET.x0);
+  const ph = stock.h * (POCKET.y1 - POCKET.y0);
+  const strip = ph / ROUGH_PASSES;
+  const total = clamp(rough, 0, 1) * ROUGH_PASSES;
+  const done = Math.floor(total);
+  const frac = total - done;
 
-  if (rough > 0) {
-    const pocketGradient = ctx.createLinearGradient(pocketX, pocketY, pocketX, pocketY + pocketH);
-    pocketGradient.addColorStop(0, "#4f6a75");
-    pocketGradient.addColorStop(1, "#263f4a");
-    roundedRect(ctx, pocketX, pocketY, pocketW, pocketH, 10);
-    ctx.fillStyle = pocketGradient;
-    ctx.fill();
+  ctx.save();
+  roundedRect(ctx, px, py, pw, ph, 8);
+  ctx.clip();
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+  for (let i = 0; i <= done && i < ROUGH_PASSES; i += 1) {
+    let sx = px;
+    let sw = pw;
+    if (i === done) {
+      sw = pw * frac;
+      sx = i % 2 === 0 ? px : px + pw - sw;
+    }
+    if (sw <= 0.5) continue;
+    const g = ctx.createLinearGradient(0, py + i * strip, 0, py + (i + 1) * strip);
+    g.addColorStop(0, "#3c515f");
+    g.addColorStop(0.5, "#263843");
+    g.addColorStop(1, "#1b2a34");
+    ctx.fillStyle = g;
+    ctx.fillRect(sx, py + i * strip, sw, strip + 0.6);
+    // scallop tool marks along the finished passes
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
-    for (let i = 0; i < 9; i += 1) {
-      const x = pocketX + (pocketW * i) / 8;
+    for (let mx = sx + 7; mx < sx + sw; mx += 13) {
       ctx.beginPath();
-      ctx.moveTo(x, pocketY + 6);
-      ctx.lineTo(x, pocketY + pocketH - 6);
+      ctx.arc(mx, py + i * strip + strip / 2, 6, -Math.PI * 0.2, Math.PI * 1.2);
       ctx.stroke();
     }
   }
 
-  if (finish > 0) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(126, 246, 255, 0.72)";
-    ctx.lineWidth = 4;
-    roundedRect(ctx, work.x + work.w * 0.1, work.y + work.h * 0.12, work.w * 0.8, work.h * 0.72, 20);
-    ctx.stroke();
-    ctx.restore();
-  }
+  // inner shadow along the top edge for a sense of pocket depth
+  const shade = ctx.createLinearGradient(0, py, 0, py + strip * 1.4);
+  shade.addColorStop(0, "rgba(0, 0, 0, 0.4)");
+  shade.addColorStop(1, "transparent");
+  ctx.fillStyle = shade;
+  ctx.fillRect(px, py, pw, strip * 1.4);
+  ctx.restore();
 
-  const holes = [
-    [0.24, 0.24],
-    [0.76, 0.24],
-    [0.24, 0.76],
-    [0.76, 0.76],
-  ];
-  holes.forEach(([hx, hy], index) => {
-    const reveal = clamp(finish * 5 - index, 0, 1);
+  if (rough > 0.92) {
+    roundedRect(ctx, px, py, pw, ph, 8);
+    ctx.strokeStyle = "rgba(126, 246, 255, 0.28)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+// Finishing pass: clean outer profile plus drilled holes, revealed progressively.
+function drawFinishing(ctx, stock, finish) {
+  if (finish <= 0.002) return;
+  const ox = stock.x + stock.w * PROFILE.x0;
+  const oy = stock.y + stock.h * PROFILE.y0;
+  const ow = stock.w * (PROFILE.x1 - PROFILE.x0);
+  const oh = stock.h * (PROFILE.y1 - PROFILE.y0);
+
+  ctx.save();
+  ctx.globalAlpha = clamp(finish * 1.6, 0, 1);
+  roundedRect(ctx, ox, oy, ow, oh, 16);
+  ctx.strokeStyle = "rgba(126, 246, 255, 0.8)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  const holeR = Math.min(stock.w, stock.h) * 0.05;
+  HOLES.forEach(([hx, hy], idx) => {
+    const reveal = clamp(finish * 4 - idx, 0, 1);
+    if (reveal <= 0.01) return;
+    const cx = stock.x + stock.w * hx;
+    const cy = stock.y + stock.h * hy;
     ctx.beginPath();
-    ctx.arc(work.x + work.w * hx, work.y + work.h * hy, lerp(6, 18, reveal), 0, Math.PI * 2);
-    ctx.fillStyle = reveal > 0.01 ? "#1c2a33" : "rgba(47, 111, 187, 0.2)";
+    ctx.arc(cx, cy, holeR * 1.6, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(126, 246, 255, 0.2)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, lerp(3, holeR, reveal), 0, Math.PI * 2);
+    ctx.fillStyle = "#12202a";
     ctx.fill();
-    ctx.strokeStyle = reveal > 0.01 ? "rgba(126, 246, 255, 0.45)" : "rgba(47, 111, 187, 0.28)";
+    ctx.strokeStyle = "rgba(126, 246, 255, 0.6)";
     ctx.lineWidth = 2;
     ctx.stroke();
   });
+}
+
+// Inspection: retracted probe scanning the finished part.
+function drawInspection(ctx, stock, now, probeX) {
+  const y0 = stock.y + stock.h * 0.06;
+  const y1 = stock.y + stock.h * 0.94;
+  ctx.save();
+  ctx.strokeStyle = "rgba(126, 246, 255, 0.5)";
+  ctx.setLineDash([5, 6]);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(probeX, y0);
+  ctx.lineTo(probeX, y1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEndMill(ctx, x, y, radius, rpm, severity, now, cutting) {
+  const rot = state.reducedMotion ? 0 : (now / 1000) * (rpm / 700);
+  if (cutting) {
+    const glow = ctx.createRadialGradient(x, y, 2, x, y, radius * 2.3);
+    const color =
+      severity === "critical" ? "rgba(255, 91, 77, 0.5)" : severity === "warning" ? "rgba(255, 191, 90, 0.45)" : "rgba(126, 246, 255, 0.5)";
+    glow.addColorStop(0, color);
+    glow.addColorStop(1, "transparent");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 2.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.shadowColor = severity === "critical" ? "rgba(255, 91, 77, 0.8)" : "rgba(126, 246, 255, 0.75)";
+  ctx.shadowBlur = cutting ? 18 : 9;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#e9f3f5";
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = severity === "critical" ? "#ff5b4d" : severity === "warning" ? "#b36b00" : "#0f9c90";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.strokeStyle = "#243543";
+  ctx.lineWidth = 2.5;
+  for (let f = 0; f < 4; f += 1) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(radius * 0.85, 0);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = "#243543";
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawMachiningScene(event, detection, timestamp) {
   const canvas = els.machiningCanvas;
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
+  const W = canvas.width;
+  const H = canvas.height;
   const now = state.reducedMotion ? 0 : timestamp;
   const severity = severityClass(detection?.severity);
   const codes = detection?.anomaly_codes || [];
-  const work = { x: 158, y: 82, w: 580, h: 218 };
+  const dropout = codes.includes("sensor_dropout");
+  const phase = event ? event.process_phase : null;
 
-  ctx.clearRect(0, 0, width, height);
-  const bedGradient = ctx.createLinearGradient(0, 0, 0, height);
-  bedGradient.addColorStop(0, "#101922");
-  bedGradient.addColorStop(1, "#172635");
-  ctx.fillStyle = bedGradient;
-  ctx.fillRect(0, 0, width, height);
+  // Centered raw stock on a fixtured machine table.
+  const stock = { w: W * 0.5, h: H * 0.6 };
+  stock.x = (W - stock.w) / 2;
+  stock.y = (H - stock.h) / 2 + H * 0.03;
+  const toCanvas = (nx, ny) => ({ x: stock.x + nx * stock.w, y: stock.y + ny * stock.h });
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.055)";
+  // Ease the machined progress toward the real event progress; snap on a new cycle.
+  const targetRough = event ? machiningProgress(event, "roughing") : 0;
+  const targetFinish = event ? machiningProgress(event, "finishing") : 0;
+  const pos = event ? cyclePosition(event) : 0;
+  if (MACH.lastPos === null || pos < MACH.lastPos - 1) {
+    MACH.rough = targetRough;
+    MACH.finish = targetFinish;
+  }
+  MACH.lastPos = pos;
+  MACH.rough += (targetRough - MACH.rough) * 0.08;
+  MACH.finish += (targetFinish - MACH.finish) * 0.08;
+  if (Math.abs(targetRough - MACH.rough) < 0.004) MACH.rough = targetRough;
+  if (Math.abs(targetFinish - MACH.finish) < 0.004) MACH.finish = targetFinish;
+
+  // Tool position derives from the eased progress so cut and cutter stay aligned.
+  let toolNx = 0.5;
+  let toolNy = 0.12;
+  let cutting = false;
+  let probeX = stock.x + stock.w * 0.5;
+  if (phase === "roughing") {
+    const s = serpentinePos(MACH.rough);
+    toolNx = s.nx;
+    toolNy = s.ny;
+    cutting = true;
+  } else if (phase === "finishing") {
+    const c = contourPos(MACH.finish);
+    toolNx = c.nx;
+    toolNy = c.ny;
+    cutting = true;
+  } else if (phase === "inspection") {
+    const scan = state.reducedMotion ? 0.5 : Math.sin(now / 620) * 0.5 + 0.5;
+    toolNx = lerp(PROFILE.x0, PROFILE.x1, scan);
+    toolNy = 0.5;
+    probeX = stock.x + stock.w * toolNx;
+    cutting = false;
+  }
+  if (dropout) cutting = false;
+  const tool = toCanvas(toolNx, toolNy);
+  if (codes.includes("chatter_risk")) {
+    tool.x += Math.sin(now / 26) * 4;
+    tool.y += Math.cos(now / 30) * 4;
+  }
+
+  // ---- machine bed ----
+  ctx.clearRect(0, 0, W, H);
+  const bed = ctx.createLinearGradient(0, 0, 0, H);
+  bed.addColorStop(0, "#0f1a24");
+  bed.addColorStop(1, "#0b141c");
+  ctx.fillStyle = bed;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
   ctx.lineWidth = 1;
-  for (let x = 0; x <= width; x += 36) {
+  for (let x = 0; x <= W; x += 40) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
+    ctx.lineTo(x, H);
     ctx.stroke();
   }
-  for (let y = 0; y <= height; y += 36) {
+  for (let y = 0; y <= H; y += 40) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
+    ctx.lineTo(W, y);
     ctx.stroke();
   }
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.07)";
-  roundedRect(ctx, 84, 44, 710, 286, 14);
+  // ---- fixtured table under the stock, with T-slots ----
+  const tableX = stock.x - W * 0.06;
+  const tableY = stock.y - H * 0.1;
+  const tableW = stock.w + W * 0.12;
+  const tableH = stock.h + H * 0.2;
+  roundedRect(ctx, tableX, tableY, tableW, tableH, 16);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(184, 198, 207, 0.25)";
+  ctx.strokeStyle = "rgba(184, 198, 207, 0.16)";
+  ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
+  ctx.lineWidth = 6;
+  for (let i = 1; i <= 3; i += 1) {
+    const yy = tableY + (tableH * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(tableX + 12, yy);
+    ctx.lineTo(tableX + tableW - 12, yy);
+    ctx.stroke();
+  }
+  drawClamp(ctx, stock.x - 4, stock.y + stock.h * 0.5, 22, 48);
+  drawClamp(ctx, stock.x + stock.w + 4, stock.y + stock.h * 0.5, 22, 48);
 
-  const partGradient = ctx.createLinearGradient(work.x, work.y, work.x, work.y + work.h);
-  partGradient.addColorStop(0, "#d5dde0");
-  partGradient.addColorStop(0.52, "#aebbc0");
-  partGradient.addColorStop(1, "#899aa2");
-  roundedRect(ctx, work.x, work.y, work.w, work.h, 22);
-  ctx.fillStyle = partGradient;
-  ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 12;
+  // ---- raw stock ----
+  const sg = ctx.createLinearGradient(stock.x, stock.y, stock.x, stock.y + stock.h);
+  sg.addColorStop(0, "#dae2e6");
+  sg.addColorStop(0.5, "#bac7ce");
+  sg.addColorStop(1, "#99a8b0");
+  roundedRect(ctx, stock.x, stock.y, stock.w, stock.h, 10);
+  ctx.fillStyle = sg;
+  ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+  ctx.shadowBlur = 22;
+  ctx.shadowOffsetY = 10;
   ctx.fill();
   ctx.shadowColor = "transparent";
   ctx.strokeStyle = "#eef4f5";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  drawRemovedMaterial(ctx, work, event);
-  drawToolPath(ctx, work);
+  // ---- material removal + finishing ----
+  drawPocket(ctx, stock, MACH.rough);
+  drawFinishing(ctx, stock, MACH.finish);
+  if (phase === "inspection") drawInspection(ctx, stock, now, probeX);
 
-  const path = toolPathPoint(event, now);
-  let cutterX = work.x + work.w * path.nx;
-  let cutterY = work.y + work.h * path.ny;
-  if (codes.includes("chatter_risk")) {
-    cutterX += Math.sin(now / 38) * 4;
-    cutterY += Math.cos(now / 42) * 4;
-  }
-
+  // ---- heat plume on thermal drift ----
   if (codes.includes("thermal_drift")) {
     ctx.save();
-    ctx.globalAlpha = 0.22;
-    const heatGradient = ctx.createRadialGradient(cutterX, cutterY, 12, cutterX, cutterY, 135);
-    heatGradient.addColorStop(0, "#ff9c3a");
-    heatGradient.addColorStop(1, "transparent");
-    ctx.fillStyle = heatGradient;
-    ctx.fillRect(work.x - 40, work.y - 40, work.w + 80, work.h + 80);
+    ctx.globalAlpha = 0.25;
+    const heat = ctx.createRadialGradient(tool.x, tool.y, 10, tool.x, tool.y, H * 0.32);
+    heat.addColorStop(0, "#ff9c3a");
+    heat.addColorStop(1, "transparent");
+    ctx.fillStyle = heat;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
-  if (path.cutting && !codes.includes("sensor_dropout")) {
-    const chipCount = severity === "critical" ? 22 : severity === "warning" ? 16 : 10;
+  // ---- chips flying off the cut ----
+  if (cutting) {
+    const chipCount = severity === "critical" ? 20 : severity === "warning" ? 14 : 9;
     for (let i = 0; i < chipCount; i += 1) {
-      const angle = (i / chipCount) * Math.PI * 2 + now / 260;
-      const radius = 16 + ((i * 11) % 34);
-      const x = cutterX + Math.cos(angle) * radius;
-      const y = cutterY + Math.sin(angle) * radius * 0.55;
-      ctx.fillStyle = i % 3 === 0 ? "#ffcc66" : "#7ef6ff";
-      ctx.globalAlpha = 0.72;
+      const angle = (i / chipCount) * Math.PI * 2 + now / 240;
+      const radius = 14 + ((i * 13) % 30);
+      const x = tool.x + Math.cos(angle) * radius;
+      const y = tool.y + Math.sin(angle) * radius * 0.6;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = i % 3 === 0 ? "#ffcf7a" : "#8fe9ff";
       ctx.fillRect(x, y, 3, 3);
     }
     ctx.globalAlpha = 1;
   }
 
+  // ---- end mill / probe ----
   const rpm = event?.spindle_speed_rpm || 4500;
-  const rotation = state.reducedMotion ? 0 : (now / 1000) * (rpm / 600);
-  ctx.save();
-  ctx.translate(cutterX, cutterY);
-  ctx.rotate(rotation);
-  ctx.shadowColor = severity === "critical" ? "rgba(180, 35, 24, 0.78)" : "rgba(126, 246, 255, 0.75)";
-  ctx.shadowBlur = severity === "normal" ? 14 : 24;
-  ctx.fillStyle = "#e9f3f5";
-  ctx.beginPath();
-  ctx.arc(0, 0, 24, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = severity === "critical" ? "#b42318" : "#087f77";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  ctx.strokeStyle = "#172433";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-17, 0);
-  ctx.lineTo(17, 0);
-  ctx.moveTo(0, -17);
-  ctx.lineTo(0, 17);
-  ctx.stroke();
-  ctx.fillStyle = "#172433";
-  ctx.beginPath();
-  ctx.arc(0, 0, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  drawEndMill(ctx, tool.x, tool.y, H * 0.05, rpm, severity, now, cutting);
 
+  // ---- labels ----
   ctx.fillStyle = "#d5edf0";
   ctx.font = "700 15px system-ui, sans-serif";
-  ctx.fillText(event ? `${titleCase(event.process_phase)} cycle - ${event.part_id}` : "Waiting for CNC cycle", 34, 32);
-  ctx.fillStyle = severity === "critical" ? "#ffb0aa" : severity === "warning" ? "#ffd58a" : "#9fd7d2";
-  ctx.fillText(event ? `${titleCase(severity)} process state` : "No active telemetry", 34, 56);
+  ctx.fillText(event ? `${titleCase(phase)} · ${event.part_id}` : "Awaiting CNC cycle", 20, 30);
+  ctx.fillStyle = severity === "critical" ? "#ff9a8f" : severity === "warning" ? "#ffce8a" : "#8fd7d0";
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.fillText(
+    event ? (dropout ? "Telemetry lost — cut unverified" : `${titleCase(severity)} process state`) : "No active telemetry",
+    20,
+    50,
+  );
 
+  // ---- cycle progress strip with phase ticks ----
+  const barX = 20;
+  const barW = W - 40;
+  const barY = H - 22;
   const progress = clamp(cycleProgress(event) * 100, 0, 100);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-  roundedRect(ctx, 840, 78, 212, 18, 9);
+  roundedRect(ctx, barX, barY, barW, 8, 4);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
   ctx.fill();
-  ctx.fillStyle = severity === "critical" ? "#b42318" : severity === "warning" ? "#b36b00" : "#087f77";
-  roundedRect(ctx, 840, 78, 212 * (progress / 100), 18, 9);
+  roundedRect(ctx, barX, barY, (barW * progress) / 100, 8, 4);
+  ctx.fillStyle = severity === "critical" ? "#ff5b4d" : severity === "warning" ? "#ffbf5a" : "#0f9c90";
   ctx.fill();
-  ctx.fillStyle = "#d5edf0";
-  ctx.font = "800 12px system-ui, sans-serif";
-  ctx.fillText("Cycle progress", 840, 68);
-  ctx.fillText(`${progress.toFixed(0)}%`, 1018, 112);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+  Object.values(PHASE_START).forEach((startPos) => {
+    const tx = barX + barW * (startPos / CYCLE_LENGTH);
+    ctx.fillRect(tx, barY - 3, 1.5, 14);
+  });
+
+  // ---- telemetry-loss overlay ----
+  if (dropout) {
+    ctx.fillStyle = "rgba(9, 15, 21, 0.5)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ff9a8f";
+    ctx.font = "800 16px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("TELEMETRY LOST — CUT STATE UNVERIFIED", W / 2, H / 2);
+    ctx.textAlign = "left";
+  }
 }
 
 function updateMachiningReadout(event, detection) {
@@ -1057,7 +1514,7 @@ function updateMachiningReadout(event, detection) {
     return;
   }
 
-  const path = toolPathPoint(event, 0);
+  const path = machineToolTarget(event);
   const rough = machiningProgress(event, "roughing");
   const finish = machiningProgress(event, "finishing");
   const codes = detection?.anomaly_codes || [];
@@ -1067,7 +1524,7 @@ function updateMachiningReadout(event, detection) {
 
   els.cutPhaseLabel.textContent = `${titleCase(event.process_phase)} pass`;
   els.cutProgress.textContent = `${Math.round(cycleProgress(event) * 100)}% cycle`;
-  els.toolPosition.textContent = `X ${(path.nx * 220).toFixed(1)} / Y ${(path.ny * 120).toFixed(1)}`;
+  els.toolPosition.textContent = `X ${(clamp(path.nx, 0, 1) * 220).toFixed(1)} / Y ${(clamp(path.ny, 0, 1) * 140).toFixed(1)}`;
 
   if (event.process_phase === "warmup") {
     els.materialRemoval.textContent = "Spindle warmup, tool above part.";
@@ -1125,7 +1582,7 @@ function render(payload) {
     renderLesson();
     renderDataSource();
     renderCollectionStage();
-    renderFlowSeverity({ severity: "normal" });
+    renderFactoryMap(payload);
     updateMachiningReadout(null, null);
     els.packetPayload.textContent = buildProtocolPacket(null, null);
     els.packetQuality.textContent = "quality pending";
@@ -1171,7 +1628,7 @@ function render(payload) {
   renderLesson();
   renderDataSource();
   renderCollectionStage();
-  renderFlowSeverity(detection);
+  renderFactoryMap(payload);
   updateMachiningReadout(event, detection);
   els.packetQuality.textContent = detection.anomaly_detected
     ? `${signalQuality(event)} - ${titleCase(detection.severity)} evidence`
@@ -1311,11 +1768,18 @@ els.resetButton.addEventListener("click", () => {
   reset().catch(console.error);
 });
 
-document.querySelectorAll("[data-node]").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.node = button.dataset.node;
+document.querySelectorAll("[data-node]").forEach((zone) => {
+  const selectZone = () => {
+    state.node = zone.dataset.node;
     renderNode();
     activateLearningPath("data-path", { pulse: true });
+  };
+  zone.addEventListener("click", selectZone);
+  zone.addEventListener("keydown", (eventObj) => {
+    if (eventObj.key === "Enter" || eventObj.key === " ") {
+      eventObj.preventDefault();
+      selectZone();
+    }
   });
 });
 
@@ -1371,5 +1835,8 @@ activateLearningPath("overview");
 setActiveButtons("[data-protocol]", "protocol", state.protocol);
 updateMachiningReadout(null, null);
 startMachiningLoop();
+if (state.reducedMotion && els.factoryMap && typeof els.factoryMap.pauseAnimations === "function") {
+  els.factoryMap.pauseAnimations();
+}
 tick(4).catch(console.error);
 startLoop();
